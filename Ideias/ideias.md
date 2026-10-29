@@ -139,7 +139,15 @@ Usuário
 - Cada treino guarda **quem marcou** (a própria pessoa ou o admin) e a origem (`SELF` / `ADMIN`).
 - "Desfazer" no botão "Treinei hoje": só o treino de **hoje** marcado pela própria pessoa.
 - **Editor de treinos (admin):** grade da semana da temporada atual; tocar na bolinha adiciona/remove. O admin pode **remover qualquer treino**, inclusive os que a pessoa marcou. Navega da S1 até a semana atual.
-- ⏳ **A decidir:** o **competidor** pode apagar os próprios treinos passados? Opções: (a) só o admin; (b) a pessoa apaga os da semana atual, os antigos só o admin; (c) a pessoa apaga qualquer um dela. Atenção: apagar treino muda a média da semana off de quem estava de off. E a pessoa pode apagar um treino adicionado pelo admin?
+- ⏳ **A decidir:** o **competidor** pode apagar os próprios treinos passados?
+- ⏳ **A decidir (por enquanto: vale em todos):** treino adicionado/removido pelo admin de um grupo vale em **todos os grupos** da pessoa — então um admin mexe na pontuação de outro grupo. Alternativa: treino do admin vale só no grupo dele (campo `groupId` no treino).
+
+## Membros (admin)
+- **Tirar do grupo:** sai do grupo e da temporada em andamento (conta nas semanas antes da saída; aparece no fim da tabela "saiu na S15"; para de contar a partir da semana atual). Os treinos dela continuam.
+- **Tirar só da temporada:** continua no grupo, para de competir nesta temporada (mesmas regras).
+- O admin pode tirar outro admin, mas o grupo **nunca fica sem admin**. O admin não tira a si mesmo (isso é "Sair do grupo").
+- **Tornar admin.**
+- **Gerar novo link de convite:** invalida o antigo (para quem foi tirado não voltar). Opções: (a) só o admin; (b) a pessoa apaga os da semana atual, os antigos só o admin; (c) a pessoa apaga qualquer um dela. Atenção: apagar treino muda a média da semana off de quem estava de off. E a pessoa pode apagar um treino adicionado pelo admin?
 
 ## Telas (fase 1)
 Nome do site: **Universidade Monstro**. Visual: tema escuro, verde como destaque, pensado para celular.

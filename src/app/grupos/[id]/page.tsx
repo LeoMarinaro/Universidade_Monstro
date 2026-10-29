@@ -10,6 +10,9 @@ import { getSeasonStandings } from "@/lib/standings";
 import { CopyInviteButton } from "./copy-invite-button";
 import { FinalizeSeasonButton } from "./finalize-season-button";
 import { GroupTabs } from "./group-tabs";
+import { LeaveGroup } from "./leave-group";
+import { MemberMenu } from "./member-menu";
+import { RegenerateInviteButton } from "./regenerate-invite-button";
 import { OffWeekControl } from "./off-week-control";
 import { RankingTable } from "./ranking-table";
 import { WeekBoard } from "./week-board";
@@ -38,7 +41,19 @@ async function GroupContent({ params }: Pick<PageProps<"/grupos/[id]">, "params"
   const standings = season ? await getSeasonStandings(season, today) : null;
   const myRow = standings?.rows.find((row) => row.userId === user.id);
 
-  const members = <MemberList members={group.members} meId={user.id} />;
+  // People competing in the running season (not removed), for the members menu
+  const inSeason = new Set(
+    standings?.rows.filter((row) => row.removedFromWeek === null).map((row) => row.userId) ?? [],
+  );
+  const members = (
+    <MemberList
+      members={group.members}
+      meId={user.id}
+      groupId={group.id}
+      viewerIsAdmin={group.isAdmin}
+      inSeason={season && standings && standings.currentWeek <= season.weeks ? inSeason : new Set()}
+    />
+  );
 
   return (
     <>
@@ -130,7 +145,12 @@ async function GroupContent({ params }: Pick<PageProps<"/grupos/[id]">, "params"
               Semanas off
             </Link>
           )}
-          {group.inviteCode && <CopyInviteButton inviteCode={group.inviteCode} />}
+          {group.inviteCode && (
+            <>
+              <CopyInviteButton inviteCode={group.inviteCode} />
+              <RegenerateInviteButton groupId={group.id} />
+            </>
+          )}
         </section>
       )}
 
@@ -154,8 +174,24 @@ async function GroupContent({ params }: Pick<PageProps<"/grupos/[id]">, "params"
           {members}
         </section>
       )}
+
+      {group.myRole && (
+        <footer className="mt-4 flex flex-col border-t border-line-soft pt-4">
+          <LeaveGroup groupId={group.id} groupName={group.name} situation={leaveSituation(group, user.id)} />
+        </footer>
+      )}
     </>
   );
+}
+
+function leaveSituation(
+  group: { myRole: string | null; members: { role: string; user: { id: string } }[] },
+  meId: string,
+) {
+  const others = group.members.filter((member) => member.user.id !== meId);
+  if (others.length === 0) return "last";
+  if (group.myRole === "ADMIN" && !others.some((member) => member.role === "ADMIN")) return "blocked";
+  return "normal";
 }
 
 function SeasonProgress({ currentWeek, weeks }: { currentWeek: number; weeks: number }) {
@@ -187,13 +223,27 @@ function SeasonProgress({ currentWeek, weeks }: { currentWeek: number; weeks: nu
 
 type Member = { role: "ADMIN" | "COMPETITOR"; user: { id: string; name: string } };
 
-function MemberList({ members, meId }: { members: Member[]; meId: string }) {
+function MemberList({
+  members,
+  meId,
+  groupId,
+  viewerIsAdmin,
+  inSeason,
+}: {
+  members: Member[];
+  meId: string;
+  groupId: string;
+  viewerIsAdmin: boolean;
+  inSeason: Set<string>;
+}) {
+  const adminCount = members.filter((member) => member.role === "ADMIN").length;
+
   return (
     <ul className="rounded-2xl border border-line-soft bg-surface py-1">
       {members.map(({ role, user: member }) => (
         <li
           key={member.id}
-          className="flex items-center justify-between border-b border-raised px-4 py-2.5 last:border-b-0"
+          className="flex min-h-14 items-center justify-between gap-2 border-b border-raised py-1.5 pr-1.5 pl-4 last:border-b-0"
         >
           <span className="flex items-center gap-2.5">
             <span
@@ -207,11 +257,23 @@ function MemberList({ members, meId }: { members: Member[]; meId: string }) {
               {member.id === meId && <span className="text-muted"> (você)</span>}
             </span>
           </span>
-          {role === "ADMIN" && (
-            <span className="rounded-full border border-accent px-2 py-0.5 text-[11px] font-bold text-accent">
-              ADMIN
-            </span>
-          )}
+          <span className="flex items-center gap-1">
+            {role === "ADMIN" && (
+              <span className="rounded-full border border-accent px-2 py-0.5 text-[11px] font-bold text-accent">
+                ADMIN
+              </span>
+            )}
+            {viewerIsAdmin && member.id !== meId && (
+              <MemberMenu
+                groupId={groupId}
+                userId={member.id}
+                name={member.name}
+                isAdmin={role === "ADMIN"}
+                inSeason={inSeason.has(member.id)}
+                canRemove={role !== "ADMIN" || adminCount > 1}
+              />
+            )}
+          </span>
         </li>
       ))}
     </ul>
