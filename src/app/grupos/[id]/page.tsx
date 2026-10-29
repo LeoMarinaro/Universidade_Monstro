@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BackHeader } from "@/components/back-header";
 import { todayKey } from "@/lib/dates";
-import { getGroupForUser } from "@/lib/groups";
+import { getFinishedSeasons, getGroupForUser } from "@/lib/groups";
 import { prisma } from "@/lib/prisma";
 import { FORMAT_LABELS } from "@/lib/seasons";
 import { getCurrentUser } from "@/lib/session";
@@ -14,6 +14,7 @@ import { GroupTabs } from "./group-tabs";
 import { LeaveGroup } from "./leave-group";
 import { MemberMenu } from "./member-menu";
 import { RegenerateInviteButton } from "./regenerate-invite-button";
+import { SeasonsList } from "./seasons-list";
 import { OffWeekControl } from "./off-week-control";
 import { RankingTable } from "./ranking-table";
 import { WeekBoard } from "./week-board";
@@ -40,6 +41,7 @@ async function GroupContent({ params }: Pick<PageProps<"/grupos/[id]">, "params"
   const season = group.currentSeason;
   const today = todayKey();
   const standings = season ? await getSeasonStandings({ ...season, groupId: group.id }, today) : null;
+  const finishedSeasons = await getFinishedSeasons(group.id);
   const pendingRequests = group.isAdmin
     ? await prisma.workoutRequest.count({ where: { groupId: group.id, status: "PENDING" } })
     : 0;
@@ -167,16 +169,35 @@ async function GroupContent({ params }: Pick<PageProps<"/grupos/[id]">, "params"
         </section>
       )}
 
-      {season && standings ? (
+      {season || finishedSeasons.length > 0 ? (
         <GroupTabs
           tabs={[
-            { id: "tabela", label: "Tabela", content: <RankingTable standings={standings} meId={user.id} /> },
+            ...(season && standings
+              ? [
+                  {
+                    id: "tabela",
+                    label: "Tabela",
+                    content: <RankingTable standings={standings} meId={user.id} groupId={group.id} />,
+                  },
+                  {
+                    id: "semana",
+                    label: "Semana",
+                    content: (
+                      <WeekBoard
+                        standings={standings}
+                        startDate={season.startDate}
+                        weeks={season.weeks}
+                        today={today}
+                        groupId={group.id}
+                      />
+                    ),
+                  },
+                ]
+              : []),
             {
-              id: "semana",
-              label: "Semana",
-              content: (
-                <WeekBoard standings={standings} startDate={season.startDate} weeks={season.weeks} today={today} />
-              ),
+              id: "temporadas",
+              label: "Temporadas",
+              content: <SeasonsList groupId={group.id} running={season} finished={finishedSeasons} />,
             },
             { id: "membros", label: "Membros", content: members },
           ]}
@@ -265,10 +286,10 @@ function MemberList({
             >
               {member.name.charAt(0).toUpperCase()}
             </span>
-            <span className="text-[15px] font-medium">
+            <Link href={`/grupos/${groupId}/membros/${member.id}`} className="text-[15px] font-medium hover:text-accent">
               {member.name}
               {member.id === meId && <span className="text-muted"> (você)</span>}
-            </span>
+            </Link>
           </span>
           <span className="flex items-center gap-1">
             {role === "ADMIN" && (

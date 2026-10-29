@@ -14,6 +14,19 @@ export function seasonWeek(startDate: Date, day: DayKey) {
   return Math.floor(days / 7) + 1;
 }
 
+// Someone's off week in a season, in words
+export function offWeekStatus(offWeek: number | null, currentWeek: number) {
+  if (offWeek === null) return "Disponível";
+  if (offWeek > currentWeek) return `Agendada na S${offWeek}`;
+  if (offWeek === currentWeek) return "De off nesta semana";
+  return `Usada na S${offWeek}`;
+}
+
+// "2,9": one decimal, Brazilian comma
+export function formatAverage(total: number, weeks: number) {
+  return (weeks > 0 ? total / weeks : 0).toFixed(1).replace(".", ",");
+}
+
 type SeasonInfo = { number: number; format: SeasonFormat; startDate: Date; weeks: number };
 
 // "T11 · Semana 18 · Pontos brutos", or the season's state when it isn't running

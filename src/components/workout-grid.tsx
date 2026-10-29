@@ -10,9 +10,19 @@ const WEEKDAY_LETTERS = ["S", "T", "Q", "Q", "S", "S", "D"];
 const WEEKDAY_NAMES = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"];
 
 // The personal diary: weeks in rows (current week on top), one circle per
-// day. Past days can be tapped to add or remove a workout; today goes through
-// the "Treinei hoje" button; future days are locked.
-export function WorkoutGrid({ today, days }: { today: DayKey; days: DayKey[] }) {
+// day. On your own diary, past days can be tapped to add or remove a workout
+// (today goes through "Treinei hoje"); someone else's diary is read-only.
+export function WorkoutGrid({
+  today,
+  days,
+  editable = true,
+  title = "Seus treinos",
+}: {
+  today: DayKey;
+  days: DayKey[];
+  editable?: boolean;
+  title?: string;
+}) {
   const [, startTransition] = useTransition();
   const [trained, toggleOptimistic] = useOptimistic(new Set(days), (current, day: DayKey) => {
     const next = new Set(current);
@@ -47,7 +57,7 @@ export function WorkoutGrid({ today, days }: { today: DayKey; days: DayKey[] }) 
   return (
     <section className="flex flex-col gap-2.5 rounded-2xl border border-line-soft bg-surface px-3 py-4.5">
       <div className="flex items-center justify-between px-1">
-        <h2 className="text-[15px] font-semibold">Seus treinos</h2>
+        <h2 className="text-[15px] font-semibold">{title}</h2>
         <span className="text-[13px] text-muted">Últimas {GRID_WEEKS} semanas</span>
       </div>
 
@@ -89,8 +99,8 @@ export function WorkoutGrid({ today, days }: { today: DayKey; days: DayKey[] }) 
                 />
               );
 
-              // Only past days are tappable here
-              if (day >= today) {
+              // Only past days of your own diary are tappable
+              if (!editable || day >= today) {
                 return (
                   <span key={day} title={label} className="flex h-10 items-center justify-center">
                     {circle}
@@ -118,10 +128,12 @@ export function WorkoutGrid({ today, days }: { today: DayKey; days: DayKey[] }) 
         ))}
       </ol>
 
-      <p className="px-1 pt-1 text-xs leading-relaxed text-muted">
-        Toque num dia que já passou para marcar ou desmarcar. Se o dia for de uma temporada em
-        andamento, o admin do grupo precisa aceitar a mudança.
-      </p>
+      {editable && (
+        <p className="px-1 pt-1 text-xs leading-relaxed text-muted">
+          Toque num dia que já passou para marcar ou desmarcar. Se o dia for de uma temporada em
+          andamento, o admin do grupo precisa aceitar a mudança.
+        </p>
+      )}
     </section>
   );
 }

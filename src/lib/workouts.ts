@@ -2,7 +2,7 @@ import { addDays, dateToKey, keyToDate, todayKey, weekStart } from "@/lib/dates"
 import { GRID_WEEKS } from "@/lib/grid";
 import { prisma } from "@/lib/prisma";
 
-// The user's diary days from the first day of the grid up to today
+// A user's diary days from the first day of the grid up to today
 export async function getRecentWorkoutDays(userId: string) {
   const today = todayKey();
   const from = addDays(weekStart(today), -7 * (GRID_WEEKS - 1));

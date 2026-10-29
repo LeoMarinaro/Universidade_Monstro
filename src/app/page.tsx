@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { GroupCards } from "@/components/group-cards";
 import { MyRequests } from "@/components/my-requests";
@@ -44,7 +45,10 @@ async function HomeContent() {
         <div className="flex flex-col gap-1">
           <h1 className="font-display text-[26px] font-bold">{user.name}</h1>
           <p className="text-sm text-muted">
-            {groups.length} {groups.length === 1 ? "grupo" : "grupos"}
+            {groups.length} {groups.length === 1 ? "grupo" : "grupos"} ·{" "}
+            <Link href={`/perfil/${user.id}`} className="font-semibold text-accent hover:text-accent-hover">
+              Ver meu perfil
+            </Link>
           </p>
         </div>
       </section>

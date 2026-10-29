@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { addDays, dateToKey, formatDayMonth, type DayKey } from "@/lib/dates";
 import type { getSeasonStandings } from "@/lib/standings";
 
@@ -11,11 +12,13 @@ export function WeekBoard({
   startDate,
   weeks,
   today,
+  groupId,
 }: {
   standings: Standings;
   startDate: Date;
   weeks: number;
   today: DayKey;
+  groupId: string;
 }) {
   const { currentWeek, rows } = standings;
 
@@ -63,7 +66,12 @@ export function WeekBoard({
                 className="grid grid-cols-[minmax(0,1fr)_repeat(7,22px)_24px] items-center gap-1.5 border-t border-raised px-3.5 py-2.25 text-center"
               >
                 <span className="flex min-w-0 flex-col items-start gap-0.5 text-left">
-                  <span className="max-w-full truncate text-sm font-medium">{row.name}</span>
+                  <Link
+                    href={`/grupos/${groupId}/membros/${row.userId}`}
+                    className="max-w-full truncate text-sm font-medium hover:text-accent"
+                  >
+                    {row.name}
+                  </Link>
                   {off && <span className="text-[10px] font-bold tracking-wide text-off">SEMANA OFF</span>}
                 </span>
                 {dayKeys.map((day) => {

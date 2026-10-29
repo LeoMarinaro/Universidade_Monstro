@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { getSeasonStandings } from "@/lib/standings";
 
 type Standings = Awaited<ReturnType<typeof getSeasonStandings>>;
@@ -5,7 +6,15 @@ type Standings = Awaited<ReturnType<typeof getSeasonStandings>>;
 // Gold, silver, bronze for the podium
 const PODIUM_COLORS = ["text-off", "text-ink/85", "text-[#e39b5b]"];
 
-export function RankingTable({ standings, meId }: { standings: Standings; meId: string }) {
+export function RankingTable({
+  standings,
+  meId,
+  groupId,
+}: {
+  standings: Standings;
+  meId: string;
+  groupId: string;
+}) {
   const { rows, currentWeek, lastWeek } = standings;
   const showThisWeek = currentWeek >= 1 && currentWeek === lastWeek;
 
@@ -29,9 +38,10 @@ export function RankingTable({ standings, meId }: { standings: Standings; meId: 
           const isMe = row.userId === meId;
           const removed = row.removedFromWeek !== null;
           return (
-            <li
-              key={row.userId}
-              className={`grid grid-cols-[28px_minmax(0,1fr)_56px_52px] items-center gap-2.5 rounded-xl border px-3 py-2.5 ${
+            <li key={row.userId}>
+            <Link
+              href={`/grupos/${groupId}/membros/${row.userId}`}
+              className={`grid grid-cols-[28px_minmax(0,1fr)_56px_52px] items-center gap-2.5 rounded-xl border px-3 py-2.5 hover:border-line ${
                 isMe ? "border-accent bg-raised" : "border-line-soft bg-surface"
               } ${removed ? "opacity-60" : ""}`}
             >
@@ -65,6 +75,7 @@ export function RankingTable({ standings, meId }: { standings: Standings; meId: 
                 {row.points}
                 <span className="sr-only"> pontos</span>
               </span>
+            </Link>
             </li>
           );
         })}

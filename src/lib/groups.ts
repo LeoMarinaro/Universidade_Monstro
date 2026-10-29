@@ -81,6 +81,29 @@ export async function getGroupForUser(groupId: string, user: { id: string; isSup
   };
 }
 
+// Finished seasons of a group, newest first, with their champions (equal
+// points share the 1st place, so there can be more than one)
+export async function getFinishedSeasons(groupId: string) {
+  const seasons = await prisma.season.findMany({
+    where: { groupId, finalizedAt: { not: null } },
+    orderBy: { number: "desc" },
+    select: {
+      number: true,
+      name: true,
+      format: true,
+      results: {
+        where: { position: 1, removedFromWeek: null },
+        select: { user: { select: { name: true, deletedAt: true } } },
+      },
+    },
+  });
+
+  return seasons.map(({ results, ...season }) => ({
+    ...season,
+    champions: results.map(({ user }) => (!user || user.deletedAt ? "Conta deletada" : user.name)),
+  }));
+}
+
 // Server-side permission check used by admin actions
 export async function isGroupAdmin(groupId: string, user: { id: string; isSuperAdmin: boolean }) {
   if (user.isSuperAdmin) return true;
