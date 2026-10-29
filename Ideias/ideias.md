@@ -99,7 +99,7 @@ Usuário
 ## Semana off
 - É **por grupo** (cada grupo/temporada controla a sua).
 - O **próprio competidor ativa** pelo site, **sem aprovação** do admin. Vale para a **semana seguinte**.
-- O admin também pode ativar para alguém.
+- O admin também pode ativar para alguém — em **qualquer semana, inclusive passadas** (para recolocar dados antigos), e também trocar ou tirar.
 - Na semana off, os treinos da pessoa = **média dos treinos dos outros** naquela semana.
 - Média **arredondada para baixo**.
 - Quem está de off **não entra** na média.
@@ -112,6 +112,9 @@ Usuário
 
 ## Temporadas
 - Cada grupo tem **só 1 temporada por vez**.
+- As semanas vão de **segunda a domingo**; a temporada sempre começa numa **segunda**.
+- ⏳ **A decidir:** como colocar no site a **T11 em andamento** (semanas passadas, que só existem no WhatsApp). Opções: (a) admin lança dia por dia; (b) importar as mensagens criando treinos em dias inventados; (c) importar só a **contagem por semana** (tabela nova), sem inventar dias — sugerida. Em qualquer opção, todos precisam ter conta antes.
+- Temporadas antigas (T1–T10): importar só o resultado final, quando os documentos chegarem.
 - Datas e "hoje" seguem o **horário de Brasília**.
 
 ## Participantes da temporada
@@ -120,7 +123,8 @@ Usuário
 - O admin pode **tirar** alguém: a pessoa continua contando nas semanas anteriores (inclusive na média da semana off) e aparece **no fim da tabela com pontos congelados** ("saiu na S15").
 
 ## Fim da temporada
-- Quem encerra é o **admin** (botão "Encerrar temporada" depois do último dia).
+- Quem encerra é o **admin**. Pode encerrar **antes do fim**: a temporada termina na semana atual (a duração é encurtada) e a classificação daquele momento é salva.
+- O admin pode **editar** a temporada (nome e duração; não pode terminar antes da semana atual nem da semana off de alguém) e **apagar** (os treinos das pessoas ficam).
 - Entre o último dia e o encerramento: "Aguardando encerramento"; ainda dá para adicionar treinos atrasados **com data dentro da temporada**.
 - Ao encerrar, a **classificação final é salva** (tabela SeasonResult) e a temporada não recalcula mais.
 
@@ -134,7 +138,8 @@ Usuário
 ## Treinos (registro)
 - Cada treino guarda **quem marcou** (a própria pessoa ou o admin) e a origem (`SELF` / `ADMIN`).
 - "Desfazer" no botão "Treinei hoje": só o treino de **hoje** marcado pela própria pessoa.
-- ⏳ **A decidir:** quem pode apagar treinos **passados**? Opções: (a) só o admin; (b) a pessoa apaga os da semana atual, os antigos só o admin; (c) a pessoa apaga qualquer um dela. Atenção: apagar treino muda a média da semana off de quem estava de off. E a pessoa pode apagar um treino adicionado pelo admin?
+- **Editor de treinos (admin):** grade da semana da temporada atual; tocar na bolinha adiciona/remove. O admin pode **remover qualquer treino**, inclusive os que a pessoa marcou. Navega da S1 até a semana atual.
+- ⏳ **A decidir:** o **competidor** pode apagar os próprios treinos passados? Opções: (a) só o admin; (b) a pessoa apaga os da semana atual, os antigos só o admin; (c) a pessoa apaga qualquer um dela. Atenção: apagar treino muda a média da semana off de quem estava de off. E a pessoa pode apagar um treino adicionado pelo admin?
 
 ## Telas (fase 1)
 Nome do site: **Universidade Monstro**. Visual: tema escuro, verde como destaque, pensado para celular.

@@ -152,7 +152,7 @@ model Season {
   name           String? // optional custom name; defaults to "Temporada {number}"
   format         SeasonFormat
   config         Json         @default("{}") // format parameters, e.g. { "weeksPerStage": 5, "pointsByPlace": [10, 8, 6] }
-  startDate      DateTime     @db.Date // a Sunday: weeks run Sunday to Saturday
+  startDate      DateTime     @db.Date // a Monday: weeks run Monday to Sunday
   weeks          Int // duration; the end date is derived from it
   offWeekEnabled Boolean      @default(true)
   // Set when the season ends and its final standings are saved in SeasonResult.

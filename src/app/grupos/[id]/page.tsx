@@ -1,11 +1,18 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BackHeader } from "@/components/back-header";
 import { todayKey } from "@/lib/dates";
 import { getGroupForUser } from "@/lib/groups";
-import { seasonSummary } from "@/lib/seasons";
+import { FORMAT_LABELS } from "@/lib/seasons";
 import { getCurrentUser } from "@/lib/session";
+import { getSeasonStandings } from "@/lib/standings";
 import { CopyInviteButton } from "./copy-invite-button";
+import { FinalizeSeasonButton } from "./finalize-season-button";
+import { GroupTabs } from "./group-tabs";
+import { OffWeekControl } from "./off-week-control";
+import { RankingTable } from "./ranking-table";
+import { WeekBoard } from "./week-board";
 
 export default function GroupPage({ params }: PageProps<"/grupos/[id]">) {
   return (
@@ -26,6 +33,13 @@ async function GroupContent({ params }: Pick<PageProps<"/grupos/[id]">, "params"
   const group = await getGroupForUser(id, user);
   if (!group) notFound();
 
+  const season = group.currentSeason;
+  const today = todayKey();
+  const standings = season ? await getSeasonStandings(season, today) : null;
+  const myRow = standings?.rows.find((row) => row.userId === user.id);
+
+  const members = <MemberList members={group.members} meId={user.id} />;
+
   return (
     <>
       <section className="flex items-center gap-3.5">
@@ -38,62 +52,168 @@ async function GroupContent({ params }: Pick<PageProps<"/grupos/[id]">, "params"
         <div className="flex flex-col gap-1">
           <h1 className="font-display text-[26px] font-bold">{group.name}</h1>
           <p className="text-sm text-muted">
-            {group.members.length} {group.members.length === 1 ? "competidor" : "competidores"}
+            {group.members.length} {group.members.length === 1 ? "membro" : "membros"}
           </p>
         </div>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-2xl border border-line-soft bg-surface p-4">
-        {group.currentSeason ? (
-          <p className="font-display text-lg font-bold">{seasonSummary(group.currentSeason, todayKey())}</p>
-        ) : (
-          <>
-            <p className="font-display text-lg font-bold">Nenhuma temporada ainda</p>
-            <p className="text-sm leading-relaxed text-muted">
-              {group.isAdmin
-                ? "Convide a galera e depois crie a primeira temporada."
-                : "Quando o admin criar a primeira temporada, a tabela aparece aqui."}
-            </p>
-          </>
-        )}
-      </section>
-
-      {group.isAdmin && group.inviteCode && (
-        <section aria-label="Ações do admin" className="flex flex-col gap-2">
-          <span className="text-xs tracking-wider text-muted uppercase">Admin</span>
-          <CopyInviteButton inviteCode={group.inviteCode} />
+      {season && standings ? (
+        <section className="flex flex-col gap-3 rounded-2xl border border-line-soft bg-surface p-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="font-display text-lg font-bold">{season.name ?? `Temporada ${season.number}`}</span>
+            <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-page">
+              {FORMAT_LABELS[season.format]}
+            </span>
+          </div>
+          <SeasonProgress currentWeek={standings.currentWeek} weeks={season.weeks} />
+          {myRow && season.offWeekEnabled && myRow.removedFromWeek === null && (
+            <OffWeekControl
+              seasonId={season.id}
+              offWeek={myRow.offWeek}
+              currentWeek={standings.currentWeek}
+              weeks={season.weeks}
+            />
+          )}
+        </section>
+      ) : (
+        <section className="flex flex-col gap-2 rounded-2xl border border-line-soft bg-surface p-4">
+          <p className="font-display text-lg font-bold">Nenhuma temporada em andamento</p>
+          <p className="text-sm leading-relaxed text-muted">
+            {group.isAdmin
+              ? "Convide a galera e depois crie a temporada."
+              : "Quando o admin criar a temporada, a tabela aparece aqui."}
+          </p>
         </section>
       )}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-[15px] font-semibold">Membros</h2>
-        <ul className="rounded-2xl border border-line-soft bg-surface py-1">
-          {group.members.map(({ role, user: member }) => (
-            <li
-              key={member.id}
-              className="flex items-center justify-between border-b border-raised px-4 py-2.5 last:border-b-0"
+      {group.isAdmin && (
+        <section aria-label="Ações do admin" className="flex flex-col gap-2">
+          <span className="text-xs tracking-wider text-muted uppercase">Admin</span>
+          {!season && (
+            <Link
+              href={`/grupos/${group.id}/temporadas/nova`}
+              className="flex h-12 items-center justify-center rounded-xl bg-accent text-sm font-semibold text-page hover:bg-accent-hover"
             >
-              <span className="flex items-center gap-2.5">
-                <span
-                  aria-hidden="true"
-                  className="flex size-8 items-center justify-center rounded-full bg-line-soft text-[13px] font-semibold"
-                >
-                  {member.name.charAt(0).toUpperCase()}
-                </span>
-                <span className="text-[15px] font-medium">
-                  {member.name}
-                  {member.id === user.id && <span className="text-muted"> (você)</span>}
-                </span>
-              </span>
-              {role === "ADMIN" && (
-                <span className="rounded-full border border-accent px-2 py-0.5 text-[11px] font-bold text-accent">
-                  ADMIN
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
+              Criar temporada
+            </Link>
+          )}
+          {season && standings && standings.currentWeek >= 1 && (
+            <FinalizeSeasonButton
+              seasonId={season.id}
+              seasonLabel={`T${season.number}`}
+              weeksLeft={Math.max(season.weeks - standings.currentWeek, 0)}
+              currentWeek={standings.currentWeek}
+            />
+          )}
+          {season && (
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href={`/grupos/${group.id}/treinos`}
+                className="flex h-12 items-center justify-center rounded-xl border border-line bg-surface text-sm font-medium text-ink/85 hover:border-muted"
+              >
+                Editar treinos
+              </Link>
+              <Link
+                href={`/grupos/${group.id}/temporadas/editar`}
+                className="flex h-12 items-center justify-center rounded-xl border border-line bg-surface text-sm font-medium text-ink/85 hover:border-muted"
+              >
+                Editar temporada
+              </Link>
+            </div>
+          )}
+          {season?.offWeekEnabled && (
+            <Link
+              href={`/grupos/${group.id}/semanas-off`}
+              className="flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-surface text-sm font-medium text-ink/85 hover:border-muted"
+            >
+              <span aria-hidden="true" className="size-2.5 rounded-full bg-off" />
+              Semanas off
+            </Link>
+          )}
+          {group.inviteCode && <CopyInviteButton inviteCode={group.inviteCode} />}
+        </section>
+      )}
+
+      {season && standings ? (
+        <GroupTabs
+          tabs={[
+            { id: "tabela", label: "Tabela", content: <RankingTable standings={standings} meId={user.id} /> },
+            {
+              id: "semana",
+              label: "Semana",
+              content: (
+                <WeekBoard standings={standings} startDate={season.startDate} weeks={season.weeks} today={today} />
+              ),
+            },
+            { id: "membros", label: "Membros", content: members },
+          ]}
+        />
+      ) : (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-[15px] font-semibold">Membros</h2>
+          {members}
+        </section>
+      )}
     </>
+  );
+}
+
+function SeasonProgress({ currentWeek, weeks }: { currentWeek: number; weeks: number }) {
+  if (currentWeek < 1) return <p className="text-[13px] text-muted">Ainda não começou · {weeks} semanas</p>;
+  if (currentWeek > weeks) return <p className="text-[13px] text-muted">Aguardando o admin encerrar</p>;
+
+  const left = weeks - currentWeek;
+  return (
+    <>
+      <div className="flex justify-between text-[13px] text-muted">
+        <span>
+          Semana {currentWeek} de {weeks}
+        </span>
+        <span>{left === 0 ? "última semana" : `faltam ${left} ${left === 1 ? "semana" : "semanas"}`}</span>
+      </div>
+      <div
+        role="progressbar"
+        aria-label="Progresso da temporada"
+        aria-valuemin={0}
+        aria-valuemax={weeks}
+        aria-valuenow={currentWeek}
+        className="h-2 overflow-hidden rounded bg-line-soft"
+      >
+        <div className="h-2 rounded bg-accent" style={{ width: `${(currentWeek / weeks) * 100}%` }} />
+      </div>
+    </>
+  );
+}
+
+type Member = { role: "ADMIN" | "COMPETITOR"; user: { id: string; name: string } };
+
+function MemberList({ members, meId }: { members: Member[]; meId: string }) {
+  return (
+    <ul className="rounded-2xl border border-line-soft bg-surface py-1">
+      {members.map(({ role, user: member }) => (
+        <li
+          key={member.id}
+          className="flex items-center justify-between border-b border-raised px-4 py-2.5 last:border-b-0"
+        >
+          <span className="flex items-center gap-2.5">
+            <span
+              aria-hidden="true"
+              className="flex size-8 items-center justify-center rounded-full bg-line-soft text-[13px] font-semibold"
+            >
+              {member.name.charAt(0).toUpperCase()}
+            </span>
+            <span className="text-[15px] font-medium">
+              {member.name}
+              {member.id === meId && <span className="text-muted"> (você)</span>}
+            </span>
+          </span>
+          {role === "ADMIN" && (
+            <span className="rounded-full border border-accent px-2 py-0.5 text-[11px] font-bold text-accent">
+              ADMIN
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }

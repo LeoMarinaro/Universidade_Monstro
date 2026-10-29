@@ -1,8 +1,9 @@
 import { addDays, formatDayMonth, weekStart, type DayKey } from "@/lib/dates";
 import { GRID_WEEKS } from "@/lib/workouts";
 
-const WEEKDAY_LETTERS = ["D", "S", "T", "Q", "Q", "S", "S"];
-const WEEKDAY_NAMES = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+// Weeks start on Monday
+const WEEKDAY_LETTERS = ["S", "T", "Q", "Q", "S", "S", "D"];
+const WEEKDAY_NAMES = ["segunda", "terça", "quarta", "quinta", "sexta", "sábado", "domingo"];
 
 // Weeks in rows (current week on top), one circle per day: the layout chosen
 // in the prototype. Shows real workouts only; off weeks belong to groups.

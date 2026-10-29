@@ -23,9 +23,11 @@ export function addDays(key: DayKey, days: number): DayKey {
   return dateToKey(date);
 }
 
-// Weeks run Sunday to Saturday
+// Weeks run Monday to Sunday, like the group's seasons
 export function weekStart(key: DayKey): DayKey {
-  return addDays(key, -keyToDate(key).getUTCDay());
+  // getUTCDay: 0 = Sunday … 6 = Saturday; days since the last Monday
+  const daysSinceMonday = (keyToDate(key).getUTCDay() + 6) % 7;
+  return addDays(key, -daysSinceMonday);
 }
 
 // "2026-10-26" -> "26/10"

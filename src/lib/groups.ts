@@ -51,7 +51,16 @@ export async function getGroupForUser(groupId: string, user: { id: string; isSup
         where: { finalizedAt: null },
         orderBy: { number: "desc" },
         take: 1,
-        select: { number: true, format: true, startDate: true, weeks: true },
+        select: {
+          id: true,
+          number: true,
+          name: true,
+          format: true,
+          config: true,
+          startDate: true,
+          weeks: true,
+          offWeekEnabled: true,
+        },
       },
     },
   });
@@ -70,6 +79,16 @@ export async function getGroupForUser(groupId: string, user: { id: string; isSup
     // Only admins share the invite link
     inviteCode: myRole === "ADMIN" || user.isSuperAdmin ? group.inviteCode : null,
   };
+}
+
+// Server-side permission check used by admin actions
+export async function isGroupAdmin(groupId: string, user: { id: string; isSuperAdmin: boolean }) {
+  if (user.isSuperAdmin) return true;
+  const membership = await prisma.membership.findUnique({
+    where: { userId_groupId: { userId: user.id, groupId } },
+    select: { role: true },
+  });
+  return membership?.role === "ADMIN";
 }
 
 // What the invite page shows before the user joins
