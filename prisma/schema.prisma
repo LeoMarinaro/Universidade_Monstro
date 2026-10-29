@@ -32,21 +32,24 @@ enum ActionSource {
   ADMIN // a group admin, on the competitor's behalf
 }
 
+// id, name, email, emailVerified, image, createdAt and updatedAt are Better
+// Auth's core user fields; the rest are declared in src/lib/auth.ts
+// (user.additionalFields). The password hash lives in Account.
 model User {
-  id           String    @id @default(cuid())
-  name         String
-  email        String    @unique
-  passwordHash String // never the plain password
-  avatarUrl    String?
-  phone        String?   @unique // used by the WhatsApp bot in phase 2
-  isSuperAdmin Boolean   @default(false) // site owner: manages everything
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String? // profile photo URL
+  phone         String?   @unique // used by the WhatsApp bot in phase 2
+  isSuperAdmin  Boolean   @default(false) // site owner: manages everything
   // Deleting an account doesn't remove the row: personal data is wiped and the
   // name becomes "Conta deletada", so active seasons don't change. The row is
   // removed for good once no active season needs it (finished seasons keep
   // their saved SeasonResult).
-  deletedAt    DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   memberships       Membership[]
   workouts          Workout[]           @relation("WorkoutOwner")
@@ -55,7 +58,64 @@ model User {
   seasonEntries     SeasonParticipant[] @relation("Participant")
   offWeeksActivated SeasonParticipant[] @relation("OffWeekActivatedBy")
   seasonResults     SeasonResult[]
+  sessions          Session[]
+  accounts          Account[]
 }
+
+// ---------------------------------------------------------------------------
+// Better Auth tables (shape from `npx auth generate`). Better Auth reads and
+// writes them; our code doesn't touch them directly.
+// ---------------------------------------------------------------------------
+
+// A logged-in browser: the cookie holds `token`
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// A way to sign in. Email and password = providerId "credential", with the
+// password hash in `password`. A Google login would be another row here.
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String? // hash, never the plain password
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+// Short-lived codes, e.g. password reset links
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+// ---------------------------------------------------------------------------
 
 model Group {
   id          String   @id @default(cuid())
