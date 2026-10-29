@@ -1,0 +1,81 @@
+import { prisma } from "@/lib/prisma";
+
+// Groups the user belongs to, each with its member count and current season
+// (the one not finalized yet; a group runs one season at a time)
+export async function getUserGroups(userId: string) {
+  const memberships = await prisma.membership.findMany({
+    where: { userId },
+    orderBy: { joinedAt: "asc" },
+    select: {
+      role: true,
+      group: {
+        select: {
+          id: true,
+          name: true,
+          _count: { select: { members: true } },
+          seasons: {
+            where: { finalizedAt: null },
+            orderBy: { number: "desc" },
+            take: 1,
+            select: { number: true, format: true, startDate: true, weeks: true },
+          },
+        },
+      },
+    },
+  });
+
+  return memberships.map(({ role, group }) => ({
+    id: group.id,
+    name: group.name,
+    role,
+    memberCount: group._count.members,
+    currentSeason: group.seasons[0] ?? null,
+  }));
+}
+
+// One group as seen by a member (or the super admin). Returns null when the
+// user can't see it, so the page answers 404 without revealing the group exists.
+export async function getGroupForUser(groupId: string, user: { id: string; isSuperAdmin: boolean }) {
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    select: {
+      id: true,
+      name: true,
+      inviteCode: true,
+      members: {
+        // ADMIN sorts before COMPETITOR (enum order)
+        orderBy: [{ role: "asc" }, { joinedAt: "asc" }],
+        select: { role: true, user: { select: { id: true, name: true } } },
+      },
+      seasons: {
+        where: { finalizedAt: null },
+        orderBy: { number: "desc" },
+        take: 1,
+        select: { number: true, format: true, startDate: true, weeks: true },
+      },
+    },
+  });
+  if (!group) return null;
+
+  const myRole = group.members.find((member) => member.user.id === user.id)?.role ?? null;
+  if (!myRole && !user.isSuperAdmin) return null;
+
+  return {
+    id: group.id,
+    name: group.name,
+    members: group.members,
+    currentSeason: group.seasons[0] ?? null,
+    myRole,
+    isAdmin: myRole === "ADMIN" || user.isSuperAdmin,
+    // Only admins share the invite link
+    inviteCode: myRole === "ADMIN" || user.isSuperAdmin ? group.inviteCode : null,
+  };
+}
+
+// What the invite page shows before the user joins
+export async function getGroupByInviteCode(inviteCode: string) {
+  return prisma.group.findUnique({
+    where: { inviteCode },
+    select: { id: true, name: true, _count: { select: { members: true } } },
+  });
+}

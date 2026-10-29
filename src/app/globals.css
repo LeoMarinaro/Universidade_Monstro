@@ -5,7 +5,10 @@
 @theme {
   --color-page: #0e1116;
   --color-surface: #171b22;
+  --color-raised: #1f2530; /* highlighted row inside a surface */
   --color-line: #2a313c;
+  --color-line-soft: #232a35; /* card borders and dividers */
+  --color-empty: #262d38; /* a day without a workout */
   --color-ink: #e8ecf1;
   --color-muted: #9aa4b2;
   --color-accent: #3fd47a;

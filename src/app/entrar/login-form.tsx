@@ -1,13 +1,15 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { TextField } from "@/components/text-field";
 import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
+import { safeNextPath } from "@/lib/next-path";
 
 export function LoginForm() {
   const router = useRouter();
+  const next = safeNextPath(useSearchParams().get("next"));
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -28,8 +30,8 @@ export function LoginForm() {
       return;
     }
 
-    // Stays "pending" until the home page loads
-    router.push("/");
+    // Stays "pending" until the next page loads
+    router.push(next);
     router.refresh();
   }
 

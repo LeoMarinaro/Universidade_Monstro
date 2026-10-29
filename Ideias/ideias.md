@@ -133,6 +133,8 @@ Usuário
 
 ## Treinos (registro)
 - Cada treino guarda **quem marcou** (a própria pessoa ou o admin) e a origem (`SELF` / `ADMIN`).
+- "Desfazer" no botão "Treinei hoje": só o treino de **hoje** marcado pela própria pessoa.
+- ⏳ **A decidir:** quem pode apagar treinos **passados**? Opções: (a) só o admin; (b) a pessoa apaga os da semana atual, os antigos só o admin; (c) a pessoa apaga qualquer um dela. Atenção: apagar treino muda a média da semana off de quem estava de off. E a pessoa pode apagar um treino adicionado pelo admin?
 
 ## Telas (fase 1)
 Nome do site: **Universidade Monstro**. Visual: tema escuro, verde como destaque, pensado para celular.

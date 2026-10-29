@@ -1,16 +1,18 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { TextField } from "@/components/text-field";
 import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
+import { safeNextPath } from "@/lib/next-path";
 
 // Better Auth's default minimum; the server checks it too
 const MIN_PASSWORD_LENGTH = 8;
 
 export function SignUpForm() {
   const router = useRouter();
+  const next = safeNextPath(useSearchParams().get("next"));
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -33,7 +35,7 @@ export function SignUpForm() {
       return;
     }
 
-    router.push("/");
+    router.push(next);
     router.refresh();
   }
 

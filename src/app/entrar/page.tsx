@@ -1,23 +1,27 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Suspense } from "react";
 import { AuthCard } from "@/components/auth-card";
+import { AuthSwitchLink } from "@/components/auth-switch-link";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Entrar · Universidade Monstro" };
 
+// The form and the link read ?next= from the URL, so they sit behind Suspense
 export default function LoginPage() {
   return (
     <AuthCard
       footer={
         <>
           Não tem conta?{" "}
-          <Link href="/cadastro" className="font-semibold text-accent hover:text-accent-hover">
-            Criar conta
-          </Link>
+          <Suspense fallback={<span className="font-semibold text-accent">Criar conta</span>}>
+            <AuthSwitchLink href="/cadastro">Criar conta</AuthSwitchLink>
+          </Suspense>
         </>
       }
     >
-      <LoginForm />
+      <Suspense fallback={<div className="h-64" />}>
+        <LoginForm />
+      </Suspense>
     </AuthCard>
   );
 }

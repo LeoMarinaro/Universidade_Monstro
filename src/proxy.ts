@@ -11,7 +11,11 @@ export function proxy(request: NextRequest) {
   const isPublic = PUBLIC_PATHS.includes(request.nextUrl.pathname);
 
   if (!isPublic && !getSessionCookie(request)) {
-    return NextResponse.redirect(new URL("/entrar", request.url));
+    const loginUrl = new URL("/entrar", request.url);
+    // Come back here after logging in (e.g. an invite link)
+    const { pathname, search } = request.nextUrl;
+    if (pathname !== "/") loginUrl.searchParams.set("next", pathname + search);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
