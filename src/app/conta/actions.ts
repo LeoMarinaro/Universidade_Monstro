@@ -52,13 +52,21 @@ export async function uploadAvatar(_previous: AvatarState, formData: FormData): 
     return { error: "Não deu para usar essa imagem. Tente outra foto." };
   }
 
-  const blob = await put(`avatars/${user.id}.jpg`, file, {
-    access: "public",
-    contentType: "image/jpeg",
-    // A new name per upload, so browsers don't keep showing the old photo
-    addRandomSuffix: true,
-  });
-  await prisma.user.update({ where: { id: user.id }, data: { image: blob.url } });
+  let url: string;
+  try {
+    const blob = await put(`avatars/${user.id}.jpg`, file, {
+      access: "public",
+      contentType: "image/jpeg",
+      // A new name per upload, so browsers don't keep showing the old photo
+      addRandomSuffix: true,
+    });
+    url = blob.url;
+  } catch (error) {
+    // Storage problems (credentials, store settings) show a message instead of breaking the page
+    console.error("Avatar upload failed", error);
+    return { error: "Não deu para salvar a foto agora. Tente de novo mais tarde." };
+  }
+  await prisma.user.update({ where: { id: user.id }, data: { image: url } });
   if (user.image) await deleteAvatarFile(user.image);
 
   refresh();
