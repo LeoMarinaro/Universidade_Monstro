@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@/generated/prisma/client";
 import { addDays, dateToKey, keyToDate, todayKey, type DayKey } from "@/lib/dates";
 import { isGroupAdmin } from "@/lib/groups";
+import { purgeDeletedUsers } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
 import { seasonWeek } from "@/lib/seasons";
 import { getCurrentUser } from "@/lib/session";
@@ -270,6 +271,7 @@ export async function deleteSeason(seasonId: string) {
   if (!season || season.finalizedAt || !(await isGroupAdmin(season.groupId, user))) return;
 
   await prisma.season.delete({ where: { id: seasonId } });
+  await purgeDeletedUsers();
   redirect(`/grupos/${season.groupId}`);
 }
 
@@ -321,6 +323,9 @@ export async function finalizeSeason(seasonId: string) {
       })),
     });
   });
+
+  // Deleted accounts this season was holding on to can go for good now
+  await purgeDeletedUsers();
 
   refresh();
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avatar } from "@/components/avatar";
 import type { getSeasonStandings } from "@/lib/standings";
 
 type Standings = Awaited<ReturnType<typeof getSeasonStandings>>;
@@ -53,12 +54,7 @@ export function RankingTable({
                 {removed ? "–" : `${row.position}º`}
               </span>
               <span className="flex min-w-0 items-center gap-2.5">
-                <span
-                  aria-hidden="true"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-line-soft text-[13px] font-semibold"
-                >
-                  {row.name.charAt(0).toUpperCase()}
-                </span>
+                <Avatar name={row.name} image={row.image} />
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate text-[15px] font-medium">
                     {row.name}

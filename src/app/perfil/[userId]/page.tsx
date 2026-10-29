@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { Avatar } from "@/components/avatar";
 import { BackHeader } from "@/components/back-header";
 import { WorkoutGrid } from "@/components/workout-grid";
 import { todayKey } from "@/lib/dates";
@@ -36,7 +37,7 @@ async function ProfileContent({ params }: Pick<Props, "params">) {
 
   const person = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, deletedAt: true },
+    select: { id: true, name: true, image: true, deletedAt: true },
   });
   if (!person || person.deletedAt) notFound();
 
@@ -93,12 +94,11 @@ async function ProfileContent({ params }: Pick<Props, "params">) {
       <BackHeader href="/" label="Perfil" backLabel="Voltar para o início" />
 
       <section className="flex flex-col items-center gap-2 text-center">
-        <div
-          aria-hidden="true"
-          className="flex size-24 items-center justify-center rounded-full border-[3px] border-accent bg-line-soft font-display text-[38px] font-bold"
-        >
-          {person.name.charAt(0).toUpperCase()}
-        </div>
+        <Avatar
+          name={person.name}
+          image={person.image}
+          className="size-24 border-[3px] border-accent font-display text-[38px] font-bold"
+        />
         <h1 className="font-display text-[28px] font-bold">{person.name}</h1>
         <p className="text-sm text-muted">
           {isSelf

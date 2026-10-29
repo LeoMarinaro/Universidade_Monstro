@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { Avatar } from "@/components/avatar";
 import { BackHeader } from "@/components/back-header";
 import { todayKey } from "@/lib/dates";
 import { getFinishedSeasons, getGroupForUser } from "@/lib/groups";
@@ -255,7 +256,7 @@ function SeasonProgress({ currentWeek, weeks }: { currentWeek: number; weeks: nu
   );
 }
 
-type Member = { role: "ADMIN" | "COMPETITOR"; user: { id: string; name: string } };
+type Member = { role: "ADMIN" | "COMPETITOR"; user: { id: string; name: string; image: string | null } };
 
 function MemberList({
   members,
@@ -280,12 +281,7 @@ function MemberList({
           className="flex min-h-14 items-center justify-between gap-2 border-b border-raised py-1.5 pr-1.5 pl-4 last:border-b-0"
         >
           <span className="flex items-center gap-2.5">
-            <span
-              aria-hidden="true"
-              className="flex size-8 items-center justify-center rounded-full bg-line-soft text-[13px] font-semibold"
-            >
-              {member.name.charAt(0).toUpperCase()}
-            </span>
+            <Avatar name={member.name} image={member.image} />
             <Link href={`/grupos/${groupId}/membros/${member.id}`} className="text-[15px] font-medium hover:text-accent">
               {member.name}
               {member.id === meId && <span className="text-muted"> (você)</span>}

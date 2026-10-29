@@ -3,35 +3,10 @@
 import { randomBytes } from "node:crypto";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import type { Prisma } from "@/generated/prisma/client";
-import { todayKey } from "@/lib/dates";
 import { isGroupAdmin } from "@/lib/groups";
+import { leaveRunningSeason } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
-import { seasonWeek } from "@/lib/seasons";
 import { getCurrentUser } from "@/lib/session";
-
-// Takes someone out of the group's running season, if they're in it. They keep
-// counting in the weeks before (past weeks never change) and stop from the
-// current week. Before the season starts they simply leave the participant list.
-async function leaveRunningSeason(tx: Prisma.TransactionClient, groupId: string, userId: string) {
-  const season = await tx.season.findFirst({
-    where: { groupId, finalizedAt: null },
-    select: { id: true, startDate: true, weeks: true },
-  });
-  if (!season) return;
-
-  const currentWeek = seasonWeek(season.startDate, todayKey());
-  if (currentWeek < 1) {
-    await tx.seasonParticipant.deleteMany({ where: { seasonId: season.id, userId } });
-    return;
-  }
-  if (currentWeek > season.weeks) return; // season over: nothing left to stop
-
-  await tx.seasonParticipant.updateMany({
-    where: { seasonId: season.id, userId, removedFromWeek: null },
-    data: { removedFromWeek: currentWeek },
-  });
-}
 
 export async function removeFromSeason(groupId: string, userId: string) {
   const admin = await getCurrentUser();

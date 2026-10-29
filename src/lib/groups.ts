@@ -45,7 +45,7 @@ export async function getGroupForUser(groupId: string, user: { id: string; isSup
       members: {
         // ADMIN sorts before COMPETITOR (enum order)
         orderBy: [{ role: "asc" }, { joinedAt: "asc" }],
-        select: { role: true, user: { select: { id: true, name: true } } },
+        select: { role: true, user: { select: { id: true, name: true, image: true } } },
       },
       seasons: {
         where: { finalizedAt: null },

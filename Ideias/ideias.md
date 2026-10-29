@@ -131,6 +131,11 @@ Usuário
 ## Admin do grupo
 - O único admin **só sai do grupo depois de passar o admin** para outra pessoa → a tela de membros precisa da opção "Tornar admin".
 
+## Conta (página /conta, pela engrenagem)
+- Mudar **nome** e **celular**; **trocar senha** (desconecta os outros aparelhos); **Sair**; **apagar conta** (digitar APAGAR).
+- O único admin de um grupo com outros membros precisa passar o admin antes de apagar a conta.
+- ⏳ Depende de serviço externo: **foto** (Vercel Blob), **esqueci minha senha** e **trocar e-mail** (serviço de e-mail, ex.: Resend).
+
 ## Conta deletada
 - A conta não some na hora: os dados pessoais (nome, e-mail, senha, foto, celular) são apagados e o nome vira **"Conta deletada"**.
 - Os treinos ficam enquanto alguma **temporada ativa** precisar deles; depois a conta é **apagada de vez** (limpeza automática). Temporadas encerradas usam o resultado salvo, então não mudam.

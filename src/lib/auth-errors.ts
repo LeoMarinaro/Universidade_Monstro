@@ -6,6 +6,7 @@ const MESSAGES: Record<string, string> = {
   INVALID_EMAIL: "E-mail inválido.",
   PASSWORD_TOO_SHORT: "A senha precisa ter pelo menos 8 caracteres.",
   PASSWORD_TOO_LONG: "A senha é longa demais.",
+  INVALID_PASSWORD: "A senha atual está incorreta.",
 };
 
 export function authErrorMessage(code: string | undefined) {

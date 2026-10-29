@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { Avatar } from "@/components/avatar";
 import { BackHeader } from "@/components/back-header";
 import { SeasonGrid } from "@/components/season-grid";
 import { todayKey } from "@/lib/dates";
@@ -35,7 +36,7 @@ async function GroupProfileContent({ params }: Pick<Props, "params">) {
 
   const person = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, deletedAt: true },
+    select: { id: true, name: true, image: true, deletedAt: true },
   });
   const history = await prisma.seasonResult.findMany({
     where: { userId, season: { groupId: group.id } },
@@ -69,14 +70,13 @@ async function GroupProfileContent({ params }: Pick<Props, "params">) {
       />
 
       <section className="flex flex-col items-center gap-2.5 text-center">
-        <div
-          aria-hidden="true"
-          className={`flex size-24 items-center justify-center rounded-full border-[3px] bg-line-soft font-display text-[38px] font-bold ${
+        <Avatar
+          name={person.name}
+          image={person.image}
+          className={`size-24 border-[3px] font-display text-[38px] font-bold ${
             row && !removed && row.position === 1 ? "border-off" : "border-accent"
           }`}
-        >
-          {person.name.charAt(0).toUpperCase()}
-        </div>
+        />
         <h1 className="font-display text-[28px] font-bold">{person.name}</h1>
         {row && !removed && (
           <span className="rounded-full bg-off px-3 py-1 text-[13px] font-semibold text-page">

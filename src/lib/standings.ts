@@ -30,7 +30,7 @@ export async function getSeasonStandings(season: SeasonForStandings, today: DayK
       userId: true,
       offWeek: true,
       removedFromWeek: true,
-      user: { select: { name: true, deletedAt: true } },
+      user: { select: { name: true, image: true, deletedAt: true } },
     },
   });
 
@@ -76,6 +76,7 @@ export async function getSeasonStandings(season: SeasonForStandings, today: DayK
   const rows = participants.map((p) => ({
     userId: p.userId,
     name: p.user.deletedAt ? "Conta deletada" : p.user.name,
+    image: p.user.deletedAt ? null : p.user.image,
     points: points.get(p.userId) ?? 0,
     weekly: counted.get(p.userId)!,
     offWeek: p.offWeek,

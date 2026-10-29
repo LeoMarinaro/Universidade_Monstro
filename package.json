@@ -12,6 +12,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
+    "@vercel/blob": "2.8.2",
     "better-auth": "1.7.14",
     "next": "16.4.3",
     "react": "19.3.0",
@@ -28,5 +29,10 @@
     "prisma": "7.10.1",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@vercel/cli-config": {
+      "zod": "4.6.7"
+    }
   }
 }
