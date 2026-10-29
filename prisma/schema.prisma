@@ -1,0 +1,166 @@
+// Database structure. Changing this file + running `npx prisma migrate dev`
+// creates a migration (a versioned SQL change) and applies it.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// The connection URL lives in prisma.config.ts (read from environment variables)
+datasource db {
+  provider = "postgresql"
+}
+
+// Role inside one group. Every admin is also a competitor.
+enum Role {
+  ADMIN
+  COMPETITOR
+}
+
+// Each format is a scoring module in the code (src/lib/formats/...).
+// Only RAW_POINTS is implemented in phase 1.
+enum SeasonFormat {
+  RAW_POINTS // each workout = 1 point
+  KNOCKOUT // weekly head-to-head duels ("mata-mata")
+  STAGES // blocks of weeks; the placing in each block gives points ("etapas")
+}
+
+// Who registered a workout or activated an off week. Kept apart from the
+// "added by" user so the history stays right even if that admin is deleted.
+enum ActionSource {
+  SELF // the competitor, on the site
+  ADMIN // a group admin, on the competitor's behalf
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String // never the plain password
+  avatarUrl    String?
+  phone        String?   @unique // used by the WhatsApp bot in phase 2
+  isSuperAdmin Boolean   @default(false) // site owner: manages everything
+  // Deleting an account doesn't remove the row: personal data is wiped and the
+  // name becomes "Conta deletada", so active seasons don't change. The row is
+  // removed for good once no active season needs it (finished seasons keep
+  // their saved SeasonResult).
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  memberships       Membership[]
+  workouts          Workout[]           @relation("WorkoutOwner")
+  workoutsMarked    Workout[]           @relation("WorkoutMarkedBy")
+  groupsCreated     Group[]
+  seasonEntries     SeasonParticipant[] @relation("Participant")
+  offWeeksActivated SeasonParticipant[] @relation("OffWeekActivatedBy")
+  seasonResults     SeasonResult[]
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  inviteCode  String   @unique @default(cuid()) // the invite link is /convite/[inviteCode]; regenerate to revoke
+  createdById String? // history only; null = "Conta deletada"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  members   Membership[]
+  seasons   Season[]
+}
+
+// A user inside a group (N-N between User and Group)
+model Membership {
+  id       String   @id @default(cuid())
+  userId   String
+  groupId  String
+  role     Role     @default(COMPETITOR)
+  joinedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // A user joins a group only once
+  @@unique([userId, groupId])
+}
+
+model Season {
+  id             String       @id @default(cuid())
+  groupId        String
+  number         Int // T1, T2… inside the group
+  name           String? // optional custom name; defaults to "Temporada {number}"
+  format         SeasonFormat
+  config         Json         @default("{}") // format parameters, e.g. { "weeksPerStage": 5, "pointsByPlace": [10, 8, 6] }
+  startDate      DateTime     @db.Date // a Sunday: weeks run Sunday to Saturday
+  weeks          Int // duration; the end date is derived from it
+  offWeekEnabled Boolean      @default(true)
+  // Set when the season ends and its final standings are saved in SeasonResult.
+  // From then on the season shows the saved results instead of recalculating.
+  finalizedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  group        Group               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  participants SeasonParticipant[]
+  results      SeasonResult[]
+
+  // Season numbers don't repeat inside a group
+  @@unique([groupId, number])
+}
+
+// Who competes in a season, plus that person's off week.
+// One row per person per season, so "1 off week per season" holds by design.
+model SeasonParticipant {
+  seasonId             String
+  userId               String
+  offWeek              Int? // week number inside the season (S1 = 1); null = not used yet
+  offWeekSource        ActionSource?
+  offWeekActivatedAt   DateTime?
+  offWeekActivatedById String?
+  // Removed by an admin: still counts (and in off-week averages) before this week,
+  // so past weeks never change; shown at the bottom of the table with frozen points.
+  // null = still competing
+  removedFromWeek      Int?
+
+  season             Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user               User   @relation("Participant", fields: [userId], references: [id], onDelete: Cascade)
+  offWeekActivatedBy User?  @relation("OffWeekActivatedBy", fields: [offWeekActivatedById], references: [id], onDelete: SetNull)
+
+  @@id([seasonId, userId])
+}
+
+// Final standings, saved once when a season ends. Finished seasons are shown
+// from here, so they never change, even after accounts are deleted for good.
+model SeasonResult {
+  id              String  @id @default(cuid())
+  seasonId        String
+  userId          String? // null = "Conta deletada"; no name is copied here on purpose
+  position        Int // 1 = champion
+  points          Int
+  workouts        Int // total counted workouts, off week included
+  weeklyWorkouts  Int[] // counted workouts per week (S1 first), off week = the average
+  offWeek         Int? // the off week used, if any
+  removedFromWeek Int? // set when the person left the season early
+
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([seasonId, userId])
+}
+
+// A workout belongs to the user, not to a group: it counts in every group they're in
+model Workout {
+  id         String       @id @default(cuid())
+  userId     String
+  date       DateTime     @db.Date // the day trained (Brazil time), without hours
+  source     ActionSource @default(SELF) // ADMIN = added late by a group admin
+  markedById String? // who marked it: the user themselves or the admin; null if that account was deleted
+  createdAt  DateTime     @default(now())
+
+  user     User  @relation("WorkoutOwner", fields: [userId], references: [id], onDelete: Cascade)
+  markedBy User? @relation("WorkoutMarkedBy", fields: [markedById], references: [id], onDelete: SetNull)
+
+  // At most one workout per day, enforced by the database
+  @@unique([userId, date])
+}
