@@ -162,7 +162,8 @@ export async function setOffWeekByAdmin(seasonId: string, userId: string, formDa
 
 // Week editor: the admin adds or removes a participant's workout on a day of
 // the running season (late workouts, re-entering old data, fixing mistakes).
-// Removing works on any workout, including ones the person marked.
+// It changes only this group's record, never the person's diary. Removing
+// works on any workout, including ones the person marked.
 export async function toggleWorkoutByAdmin(seasonId: string, userId: string, day: DayKey) {
   const admin = await getCurrentUser();
   const season = await prisma.season.findUnique({
@@ -182,10 +183,20 @@ export async function toggleWorkoutByAdmin(seasonId: string, userId: string, day
   if (!participant) return;
 
   const date = keyToDate(day);
-  const { count } = await prisma.workout.deleteMany({ where: { userId, date } });
+  const { groupId } = season;
+
+  // The admin's tap settles any request still waiting for this day
+  await prisma.workoutRequest.updateMany({
+    where: { groupId, userId, date, status: "PENDING" },
+    data: { status: "REJECTED", decidedById: admin.id, decidedAt: new Date() },
+  });
+
+  const { count } = await prisma.groupWorkout.deleteMany({ where: { groupId, userId, date } });
   if (count === 0) {
     try {
-      await prisma.workout.create({ data: { userId, date, source: "ADMIN", markedById: admin.id } });
+      await prisma.groupWorkout.create({
+        data: { groupId, userId, date, source: "ADMIN", markedById: admin.id },
+      });
     } catch (error) {
       // Someone marked it at the same moment: one workout per day either way
       const alreadyMarked =

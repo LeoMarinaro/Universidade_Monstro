@@ -14,6 +14,7 @@
   --color-accent: #3fd47a;
   --color-accent-hover: #6be39a;
   --color-off: #f2c94c;
+  --color-off-soft: #2a2512; /* background of yellow notices */
   --color-danger: #ff8a8a;
 }
 

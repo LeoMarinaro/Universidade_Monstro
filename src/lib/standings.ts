@@ -7,14 +7,16 @@ import { seasonWeek } from "@/lib/seasons";
 
 type SeasonForStandings = {
   id: string;
+  groupId: string;
   format: SeasonFormat;
   config: unknown;
   startDate: Date;
   weeks: number;
 };
 
-// Live standings of a running season, recalculated from the workouts on every
-// request (finished seasons will read their saved SeasonResult instead)
+// Live standings of a running season, recalculated on every request from the
+// group's own workout record (GroupWorkout, not the personal diaries).
+// Finished seasons will read their saved SeasonResult instead.
 export async function getSeasonStandings(season: SeasonForStandings, today: DayKey) {
   const start = dateToKey(season.startDate);
   const end = addDays(start, season.weeks * 7 - 1);
@@ -32,8 +34,9 @@ export async function getSeasonStandings(season: SeasonForStandings, today: DayK
     },
   });
 
-  const workouts = await prisma.workout.findMany({
+  const workouts = await prisma.groupWorkout.findMany({
     where: {
+      groupId: season.groupId,
       userId: { in: participants.map((p) => p.userId) },
       date: { gte: keyToDate(start), lte: keyToDate(end) },
     },

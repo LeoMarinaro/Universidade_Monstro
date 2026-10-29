@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 import { GroupCards } from "@/components/group-cards";
+import { MyRequests } from "@/components/my-requests";
 import { SignOutButton } from "@/components/sign-out-button";
 import { WorkoutGrid } from "@/components/workout-grid";
 import { getUserGroups } from "@/lib/groups";
 import { getCurrentUser } from "@/lib/session";
-import { getRecentWorkoutDays } from "@/lib/workouts";
+import { getMyRecentRequests, getRecentWorkoutDays } from "@/lib/workouts";
 import { TrainedTodayButton } from "./trained-today-button";
 
 export default function Home() {
@@ -25,9 +26,10 @@ export default function Home() {
 
 async function HomeContent() {
   const user = await getCurrentUser();
-  const [{ today, days }, groups] = await Promise.all([
+  const [{ today, days }, groups, requests] = await Promise.all([
     getRecentWorkoutDays(user.id),
     getUserGroups(user.id),
+    getMyRecentRequests(user.id),
   ]);
 
   return (
@@ -47,8 +49,9 @@ async function HomeContent() {
         </div>
       </section>
 
-      <TrainedTodayButton trainedToday={days.has(today)} />
+      <TrainedTodayButton trainedToday={days.includes(today)} />
       <WorkoutGrid today={today} days={days} />
+      <MyRequests requests={requests} />
       <GroupCards groups={groups} today={today} />
     </>
   );

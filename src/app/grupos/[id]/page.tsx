@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { BackHeader } from "@/components/back-header";
 import { todayKey } from "@/lib/dates";
 import { getGroupForUser } from "@/lib/groups";
+import { prisma } from "@/lib/prisma";
 import { FORMAT_LABELS } from "@/lib/seasons";
 import { getCurrentUser } from "@/lib/session";
 import { getSeasonStandings } from "@/lib/standings";
@@ -38,7 +39,10 @@ async function GroupContent({ params }: Pick<PageProps<"/grupos/[id]">, "params"
 
   const season = group.currentSeason;
   const today = todayKey();
-  const standings = season ? await getSeasonStandings(season, today) : null;
+  const standings = season ? await getSeasonStandings({ ...season, groupId: group.id }, today) : null;
+  const pendingRequests = group.isAdmin
+    ? await prisma.workoutRequest.count({ where: { groupId: group.id, status: "PENDING" } })
+    : 0;
   const myRow = standings?.rows.find((row) => row.userId === user.id);
 
   // People competing in the running season (not removed), for the members menu
@@ -104,6 +108,15 @@ async function GroupContent({ params }: Pick<PageProps<"/grupos/[id]">, "params"
       {group.isAdmin && (
         <section aria-label="Ações do admin" className="flex flex-col gap-2">
           <span className="text-xs tracking-wider text-muted uppercase">Admin</span>
+          {pendingRequests > 0 && (
+            <Link
+              href={`/grupos/${group.id}/pedidos`}
+              className="flex h-12 items-center justify-between rounded-xl border border-off bg-off-soft px-4 text-sm font-semibold text-off"
+            >
+              {pendingRequests === 1 ? "1 pedido de treino" : `${pendingRequests} pedidos de treino`}
+              <span aria-hidden="true">›</span>
+            </Link>
+          )}
           {!season && (
             <Link
               href={`/grupos/${group.id}/temporadas/nova`}

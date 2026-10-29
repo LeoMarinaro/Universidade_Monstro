@@ -135,6 +135,17 @@ Usuário
 - A conta não some na hora: os dados pessoais (nome, e-mail, senha, foto, celular) são apagados e o nome vira **"Conta deletada"**.
 - Os treinos ficam enquanto alguma **temporada ativa** precisar deles; depois a conta é **apagada de vez** (limpeza automática). Temporadas encerradas usam o resultado salvo, então não mudam.
 
+## Diário pessoal × treino do grupo (decidido em 29/10)
+- **Diário pessoal** (tabela `Workout`): só a pessoa mexe, em **qualquer dia passado** (tocando na grade da tela inicial). Alimenta a grade e o perfil.
+- **Treino do grupo** (tabela `GroupWorkout`): é o que conta na temporada de cada grupo.
+- **"Treinei hoje"** (e o "Desfazer" de hoje) muda o diário **e** os grupos em que a pessoa compete, **direto**.
+- Dia passado alterado no diário:
+  - cai numa temporada **encerrada** ou fora de temporada → só o diário muda;
+  - cai na temporada **em andamento** (ou aguardando encerramento) → vira **pedido** (`WorkoutRequest`) para o admin do grupo aceitar ou recusar. Se a pessoa é admin do grupo, aplica na hora. Se ela desfaz antes da resposta, o pedido é cancelado.
+- **Editor do admin** muda **só a tabela do grupo** (nunca o diário) e resolve pedidos pendentes daquele dia.
+- Dias **futuros** não podem ser marcados.
+- Isso resolveu as pendências "competidor apagar treinos passados" e "treino do admin valer em todos os grupos" (agora vale só no grupo dele).
+
 ## Treinos (registro)
 - Cada treino guarda **quem marcou** (a própria pessoa ou o admin) e a origem (`SELF` / `ADMIN`).
 - "Desfazer" no botão "Treinei hoje": só o treino de **hoje** marcado pela própria pessoa.

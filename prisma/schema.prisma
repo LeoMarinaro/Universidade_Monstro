@@ -51,15 +51,18 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  memberships       Membership[]
-  workouts          Workout[]           @relation("WorkoutOwner")
-  workoutsMarked    Workout[]           @relation("WorkoutMarkedBy")
-  groupsCreated     Group[]
-  seasonEntries     SeasonParticipant[] @relation("Participant")
-  offWeeksActivated SeasonParticipant[] @relation("OffWeekActivatedBy")
-  seasonResults     SeasonResult[]
-  sessions          Session[]
-  accounts          Account[]
+  memberships         Membership[]
+  workouts            Workout[]           @relation("WorkoutOwner")
+  groupWorkouts       GroupWorkout[]      @relation("GroupWorkoutOwner")
+  groupWorkoutsMarked GroupWorkout[]      @relation("GroupWorkoutMarkedBy")
+  workoutRequests     WorkoutRequest[]    @relation("WorkoutRequestOwner")
+  requestsDecided     WorkoutRequest[]    @relation("WorkoutRequestDecidedBy")
+  groupsCreated       Group[]
+  seasonEntries       SeasonParticipant[] @relation("Participant")
+  offWeeksActivated   SeasonParticipant[] @relation("OffWeekActivatedBy")
+  seasonResults       SeasonResult[]
+  sessions            Session[]
+  accounts            Account[]
 }
 
 // ---------------------------------------------------------------------------
@@ -125,9 +128,11 @@ model Group {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  createdBy User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  members   Membership[]
-  seasons   Season[]
+  createdBy       User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  members         Membership[]
+  seasons         Season[]
+  workouts        GroupWorkout[]
+  workoutRequests WorkoutRequest[]
 }
 
 // A user inside a group (N-N between User and Group)
@@ -209,18 +214,69 @@ model SeasonResult {
   @@unique([seasonId, userId])
 }
 
-// A workout belongs to the user, not to a group: it counts in every group they're in
+// The person's own diary: only they change it, on any past day. It feeds their
+// grid and profile. What counts in a competition is GroupWorkout.
 model Workout {
-  id         String       @id @default(cuid())
-  userId     String
-  date       DateTime     @db.Date // the day trained (Brazil time), without hours
-  source     ActionSource @default(SELF) // ADMIN = added late by a group admin
-  markedById String? // who marked it: the user themselves or the admin; null if that account was deleted
-  createdAt  DateTime     @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime @db.Date // the day trained (Brazil time), without hours
+  createdAt DateTime @default(now())
 
-  user     User  @relation("WorkoutOwner", fields: [userId], references: [id], onDelete: Cascade)
-  markedBy User? @relation("WorkoutMarkedBy", fields: [markedById], references: [id], onDelete: SetNull)
+  user User @relation("WorkoutOwner", fields: [userId], references: [id], onDelete: Cascade)
 
   // At most one workout per day, enforced by the database
   @@unique([userId, date])
+}
+
+// What counts in a group's season. "Treinei hoje" writes here directly; a
+// past day changed in the diary becomes a WorkoutRequest the admin accepts;
+// the admin's editor changes only this group.
+model GroupWorkout {
+  id         String       @id @default(cuid())
+  groupId    String
+  userId     String
+  date       DateTime     @db.Date
+  source     ActionSource @default(SELF) // SELF = the person (or their accepted request); ADMIN = the admin's editor
+  markedById String? // who put it here; null if that account was deleted
+  createdAt  DateTime     @default(now())
+
+  group    Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User  @relation("GroupWorkoutOwner", fields: [userId], references: [id], onDelete: Cascade)
+  markedBy User? @relation("GroupWorkoutMarkedBy", fields: [markedById], references: [id], onDelete: SetNull)
+
+  // One workout per day per person in each group
+  @@unique([groupId, userId, date])
+  @@index([groupId, date])
+}
+
+enum RequestAction {
+  ADD
+  REMOVE
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A past day changed in someone's diary that falls in a running season: the
+// group's admin decides whether the group's record follows
+model WorkoutRequest {
+  id          String        @id @default(cuid())
+  groupId     String
+  userId      String // who asked
+  date        DateTime      @db.Date
+  action      RequestAction
+  status      RequestStatus @default(PENDING)
+  decidedById String?
+  createdAt   DateTime      @default(now())
+  decidedAt   DateTime?
+
+  group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User  @relation("WorkoutRequestOwner", fields: [userId], references: [id], onDelete: Cascade)
+  decidedBy User? @relation("WorkoutRequestDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([groupId, status])
+  @@index([userId, status])
 }

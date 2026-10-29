@@ -62,8 +62,9 @@ async function EditorContent({ params, searchParams }: Pick<Props, "params" | "s
     orderBy: { user: { name: "asc" } },
     select: { userId: true, offWeek: true, user: { select: { name: true } } },
   });
-  const workouts = await prisma.workout.findMany({
+  const workouts = await prisma.groupWorkout.findMany({
     where: {
+      groupId: group.id,
       userId: { in: participants.map((p) => p.userId) },
       date: { gte: keyToDate(days[0]), lte: keyToDate(days[6]) },
     },
@@ -86,8 +87,8 @@ async function EditorContent({ params, searchParams }: Pick<Props, "params" | "s
       <div className="flex flex-col gap-1.5">
         <h1 className="font-display text-[26px] font-bold">Editar treinos</h1>
         <p className="text-sm leading-relaxed text-muted">
-          Toque numa bolinha para adicionar ou tirar o treino daquele dia. Vale para treinos
-          atrasados, dados antigos e correções.
+          Toque numa bolinha para adicionar ou tirar o treino daquele dia. Muda só a tabela
+          deste grupo: o diário da pessoa continua igual.
         </p>
       </div>
 
