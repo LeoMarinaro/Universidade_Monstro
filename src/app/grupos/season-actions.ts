@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@/generated/prisma/client";
 import { addDays, dateToKey, keyToDate, todayKey, type DayKey } from "@/lib/dates";
+import { phaseNames, QUALIFIER_OPTIONS, type PlayoffConfig } from "@/lib/formats/playoffs";
 import { isGroupAdmin } from "@/lib/groups";
 import { purgeDeletedUsers } from "@/lib/membership";
 import { prisma } from "@/lib/prisma";
@@ -37,7 +38,7 @@ export async function createSeason(
   const number = Number(formData.get("number"));
   const name = String(formData.get("name") ?? "").trim() || null;
   const start = String(formData.get("startDate") ?? "");
-  const weeks = Number(formData.get("weeks"));
+  const format = formData.get("format") === "KNOCKOUT" ? "KNOCKOUT" : "RAW_POINTS";
   const offWeekEnabled = formData.get("offWeekEnabled") === "on";
   const participantIds = formData.getAll("participants").map(String);
   const offS1Ids = offWeekEnabled ? formData.getAll("offS1").map(String) : [];
@@ -45,9 +46,6 @@ export async function createSeason(
   if (!Number.isInteger(number) || number < 1) return { error: "Número da temporada inválido." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || keyToDate(start).getUTCDay() !== 1) {
     return { error: "A data de início precisa ser uma segunda-feira." };
-  }
-  if (!Number.isInteger(weeks) || weeks < 1 || weeks > MAX_WEEKS) {
-    return { error: `A duração precisa ser entre 1 e ${MAX_WEEKS} semanas.` };
   }
 
   // Participants must be members of this group
@@ -58,6 +56,31 @@ export async function createSeason(
   const memberIds = new Set(members.map((m) => m.userId));
   const participants = participantIds.filter((id) => memberIds.has(id));
   if (participants.length === 0) return { error: "Escolha pelo menos um participante." };
+
+  // Play-offs: the duration is the qualifying plus every phase, all set by the admin
+  let weeks = Number(formData.get("weeks"));
+  let config: PlayoffConfig | undefined;
+  if (format === "KNOCKOUT") {
+    const qualifiers = Number(formData.get("qualifiers"));
+    const qualifyingWeeks = Number(formData.get("qualifyingWeeks"));
+    const phaseWeeks = formData.getAll("phaseWeeks").map(Number);
+
+    if (!QUALIFIER_OPTIONS.includes(qualifiers) || qualifiers > participants.length) {
+      return { error: "Escolha uma fase inicial que caiba no número de participantes." };
+    }
+    const allDurations = [qualifyingWeeks, ...phaseWeeks];
+    if (
+      phaseWeeks.length !== phaseNames(qualifiers).length ||
+      allDurations.some((duration) => !Number.isInteger(duration) || duration < 1)
+    ) {
+      return { error: "A classificação e cada fase precisam durar pelo menos 1 semana." };
+    }
+    config = { qualifyingWeeks, qualifiers, phaseWeeks };
+    weeks = allDurations.reduce((sum, duration) => sum + duration, 0);
+  }
+  if (!Number.isInteger(weeks) || weeks < 1 || weeks > MAX_WEEKS) {
+    return { error: `A duração precisa ser entre 1 e ${MAX_WEEKS} semanas.` };
+  }
 
   const numberTaken = await prisma.season.findUnique({
     where: { groupId_number: { groupId, number } },
@@ -71,7 +94,8 @@ export async function createSeason(
       groupId,
       number,
       name,
-      format: "RAW_POINTS",
+      format,
+      ...(config ? { config } : {}),
       startDate: keyToDate(start),
       weeks,
       offWeekEnabled,
@@ -214,7 +238,8 @@ export type UpdateSeasonState = { error: string | null };
 // Admin edits the running season: name, start date (a Monday, may be in the
 // past) and duration. The duration can't end before the current week or before
 // someone's off week. Off weeks are stored by week number, so they keep their
-// number (S3 stays S3) when the start date moves.
+// number (S3 stays S3) when the start date moves. In play-offs the duration
+// comes from the phases set at creation, so it doesn't change here.
 export async function updateSeason(
   seasonId: string,
   _previous: UpdateSeasonState,
@@ -225,6 +250,8 @@ export async function updateSeason(
     where: { id: seasonId },
     select: {
       groupId: true,
+      format: true,
+      weeks: true,
       finalizedAt: true,
       participants: { select: { offWeek: true } },
     },
@@ -235,7 +262,7 @@ export async function updateSeason(
 
   const name = String(formData.get("name") ?? "").trim() || null;
   const start = String(formData.get("startDate") ?? "");
-  const weeks = Number(formData.get("weeks"));
+  const weeks = season.format === "KNOCKOUT" ? season.weeks : Number(formData.get("weeks"));
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || keyToDate(start).getUTCDay() !== 1) {
     return { error: "A data de início precisa ser uma segunda-feira." };
@@ -300,13 +327,20 @@ export async function finalizeSeason(seasonId: string) {
   if (currentWeek < 1) return;
   const weeks = Math.min(currentWeek, season.weeks);
 
-  const standings = await getSeasonStandings({ ...season, weeks }, today);
+  const standings = await getSeasonStandings({ ...season, weeks }, today, { finalizing: true });
 
   await prisma.$transaction(async (tx) => {
     // finalizedAt: null in the filter = only the first click saves results
     const { count } = await tx.season.updateMany({
       where: { id: seasonId, finalizedAt: null },
-      data: { finalizedAt: new Date(), weeks },
+      data: {
+        finalizedAt: new Date(),
+        weeks,
+        // The bracket stays frozen with the rest of the results
+        ...(standings.bracket
+          ? { config: { ...(season.config as Prisma.JsonObject), finalBracket: standings.bracket } }
+          : {}),
+      },
     });
     if (count === 0) return;
 

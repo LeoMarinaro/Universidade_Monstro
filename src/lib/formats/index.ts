@@ -12,4 +12,7 @@ export type FormatModule = {
 // One module per format. A new format = a new file here + an entry below.
 export const FORMAT_MODULES: Partial<Record<SeasonFormat, FormatModule>> = {
   RAW_POINTS: rawPoints,
+  // Play-offs run next to a general classification with the same points;
+  // the bracket itself is in ./playoffs.ts
+  KNOCKOUT: rawPoints,
 };

@@ -3,7 +3,7 @@ import { dateToKey, formatDayMonth, keyToDate, type DayKey } from "@/lib/dates";
 
 export const FORMAT_LABELS: Record<SeasonFormat, string> = {
   RAW_POINTS: "Pontos brutos",
-  KNOCKOUT: "Mata-mata",
+  KNOCKOUT: "Play-offs",
   STAGES: "Etapas",
 };
 

@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { TextField } from "@/components/text-field";
+import { phaseNames, QUALIFIER_OPTIONS } from "@/lib/formats/playoffs";
 import type { CreateSeasonState } from "../../../season-actions";
 
 type Props = {
@@ -13,18 +14,34 @@ type Props = {
 
 const initialState: CreateSeasonState = { error: null };
 
-// Only "Pontos brutos" is implemented; the others show what's coming
 const FORMATS = [
-  { label: "Pontos brutos", description: "Cada treino vale 1 ponto", available: true },
-  { label: "Mata-mata", description: "Duelos semanais entre competidores", available: false },
-  { label: "Etapas", description: "Blocos de semanas; a colocação dá pontos", available: false },
+  { id: "RAW_POINTS", label: "Pontos brutos", description: "Cada treino vale 1 ponto", available: true },
+  {
+    id: "KNOCKOUT",
+    label: "Play-offs",
+    description: "Classificação e depois confrontos diretos, com a classificação geral junto",
+    available: true,
+  },
+  { id: "STAGES", label: "Etapas", description: "Blocos de semanas; a colocação dá pontos", available: false },
 ];
+
+const DEFAULT_QUALIFYING_WEEKS = "6";
+const DEFAULT_PHASE_WEEKS = "3";
+
+function durationValue(text: string) {
+  const value = Number(text);
+  return Number.isInteger(value) && value > 0 ? value : 0;
+}
 
 export function SeasonForm({ action, nextNumber, defaultStart, members }: Props) {
   const [state, formAction, pending] = useActionState(action, initialState);
+  const [format, setFormat] = useState("RAW_POINTS");
   const [offWeekEnabled, setOffWeekEnabled] = useState(true);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [offS1, setOffS1] = useState<Set<string>>(new Set());
+  const [chosenQualifiers, setChosenQualifiers] = useState<number | null>(null);
+  const [qualifyingWeeks, setQualifyingWeeks] = useState(DEFAULT_QUALIFYING_WEEKS);
+  const [phaseDurations, setPhaseDurations] = useState<Record<string, string>>({});
 
   function toggle(set: Set<string>, id: string) {
     const next = new Set(set);
@@ -32,6 +49,17 @@ export function SeasonForm({ action, nextNumber, defaultStart, members }: Props)
     else next.add(id);
     return next;
   }
+
+  // Only the phases that fit the participants; starts at the biggest one that fits
+  const participantCount = members.length - excluded.size;
+  const qualifierOptions = QUALIFIER_OPTIONS.filter((option) => option <= participantCount);
+  const biggestOption = qualifierOptions.at(-1) ?? null;
+  const qualifiers =
+    chosenQualifiers !== null && qualifierOptions.includes(chosenQualifiers) ? chosenQualifiers : biggestOption;
+  const phases = qualifiers ? phaseNames(qualifiers) : [];
+  const phaseValue = (name: string) => phaseDurations[name] ?? DEFAULT_PHASE_WEEKS;
+  const totalWeeks =
+    durationValue(qualifyingWeeks) + phases.reduce((sum, name) => sum + durationValue(phaseValue(name)), 0);
 
   return (
     <form action={formAction} className="flex flex-col gap-5.5">
@@ -50,31 +78,34 @@ export function SeasonForm({ action, nextNumber, defaultStart, members }: Props)
           className="h-12 rounded-xl border border-line bg-surface px-3 text-[15px] text-ink [color-scheme:dark] focus:border-accent focus:outline-none"
           required
         />
-        <TextField label="Duração (semanas)" name="weeks" type="number" min={1} max={104} placeholder="24" required />
+        {format === "RAW_POINTS" && (
+          <TextField label="Duração (semanas)" name="weeks" type="number" min={1} max={104} placeholder="24" required />
+        )}
       </div>
 
       <fieldset className="flex flex-col gap-2.5">
         <legend className="mb-2 text-sm font-medium text-ink/85">Formato</legend>
-        {FORMATS.map((format) => (
+        {FORMATS.map((option) => (
           <label
-            key={format.label}
+            key={option.id}
             className={`flex items-center gap-3.5 rounded-2xl border bg-surface px-4 py-3.5 ${
-              format.available ? "border-accent" : "border-line-soft opacity-55"
-            }`}
+              format === option.id ? "border-accent" : "border-line-soft"
+            } ${option.available ? "cursor-pointer" : "opacity-55"}`}
           >
             <input
               type="radio"
               name="format"
-              value={format.label}
-              defaultChecked={format.available}
-              disabled={!format.available}
-              className="size-5 accent-accent"
+              value={option.id}
+              checked={format === option.id}
+              onChange={() => setFormat(option.id)}
+              disabled={!option.available}
+              className="size-5 shrink-0 accent-accent"
             />
             <span className="flex grow flex-col gap-0.5">
-              <span className="text-[15px] font-semibold">{format.label}</span>
-              <span className="text-[13px] text-muted">{format.description}</span>
+              <span className="text-[15px] font-semibold">{option.label}</span>
+              <span className="text-[13px] text-muted">{option.description}</span>
             </span>
-            {!format.available && (
+            {!option.available && (
               <span className="rounded-full border border-[#3a4250] px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-muted">
                 Em breve
               </span>
@@ -82,6 +113,67 @@ export function SeasonForm({ action, nextNumber, defaultStart, members }: Props)
           </label>
         ))}
       </fieldset>
+
+      {format === "KNOCKOUT" && (
+        <fieldset className="flex flex-col gap-4 rounded-2xl border border-line-soft bg-surface p-4">
+          <legend className="px-1 text-sm font-medium text-ink/85">Play-offs</legend>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="qualifiers" className="text-sm font-medium text-ink/85">
+              Fase inicial
+            </label>
+            {qualifiers ? (
+              <select
+                id="qualifiers"
+                name="qualifiers"
+                value={qualifiers}
+                onChange={(event) => setChosenQualifiers(Number(event.target.value))}
+                className="h-12 rounded-xl border border-line bg-page px-3 text-[15px] text-ink [color-scheme:dark]"
+              >
+                {qualifierOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {phaseNames(option)[0]} ({option} classificados)
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-sm text-danger">Os play-offs precisam de pelo menos 2 participantes.</p>
+            )}
+            <p className="text-xs leading-relaxed text-muted">
+              As opções dependem do número de participantes ({participantCount}). Quem empatar na última
+              vaga também passa e divide o confronto.
+            </p>
+          </div>
+
+          <TextField
+            label="Classificação (semanas)"
+            name="qualifyingWeeks"
+            type="number"
+            min={1}
+            value={qualifyingWeeks}
+            onChange={(event) => setQualifyingWeeks(event.target.value)}
+            required
+          />
+
+          {phases.map((name, index) => (
+            <TextField
+              key={name}
+              id={`phase-weeks-${index}`}
+              label={`${name} (semanas)`}
+              name="phaseWeeks"
+              type="number"
+              min={1}
+              value={phaseValue(name)}
+              onChange={(event) => setPhaseDurations({ ...phaseDurations, [name]: event.target.value })}
+              required
+            />
+          ))}
+
+          <p className="border-t border-line-soft pt-3 text-sm">
+            Duração total: <strong className="font-semibold">{totalWeeks} semanas</strong>
+          </p>
+        </fieldset>
+      )}
 
       <label className="flex items-center justify-between gap-3 rounded-2xl border border-line-soft bg-surface px-4 py-3.5">
         <span className="flex flex-col gap-0.5">
@@ -105,7 +197,7 @@ export function SeasonForm({ action, nextNumber, defaultStart, members }: Props)
           Participantes
         </legend>
         <p className="-mt-1 text-[13px] text-muted">
-          {members.length - excluded.size} de {members.length}
+          {participantCount} de {members.length}
         </p>
         <ul className="rounded-2xl border border-line-soft bg-surface py-1">
           {members.map((member) => {

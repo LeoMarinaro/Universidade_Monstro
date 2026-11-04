@@ -1,3 +1,4 @@
+import { readFinalBracket } from "@/lib/formats/playoffs";
 import { prisma } from "@/lib/prisma";
 
 // Groups the user belongs to, each with its member count and current season
@@ -82,7 +83,8 @@ export async function getGroupForUser(groupId: string, user: { id: string; isSup
 }
 
 // Finished seasons of a group, newest first, with their champions (equal
-// points share the 1st place, so there can be more than one)
+// points share the 1st place, so there can be more than one). Play-offs also
+// have the bracket's champions, next to the general classification's.
 export async function getFinishedSeasons(groupId: string) {
   const seasons = await prisma.season.findMany({
     where: { groupId, finalizedAt: { not: null } },
@@ -91,17 +93,29 @@ export async function getFinishedSeasons(groupId: string) {
       number: true,
       name: true,
       format: true,
+      config: true,
       results: {
-        where: { position: 1, removedFromWeek: null },
-        select: { user: { select: { name: true, deletedAt: true } } },
+        select: {
+          userId: true,
+          position: true,
+          removedFromWeek: true,
+          user: { select: { name: true, deletedAt: true } },
+        },
       },
     },
   });
 
-  return seasons.map(({ results, ...season }) => ({
-    ...season,
-    champions: results.map(({ user }) => (!user || user.deletedAt ? "Conta deletada" : user.name)),
-  }));
+  return seasons.map(({ results, config, ...season }) => {
+    const nameOf = (result: (typeof results)[number] | undefined) =>
+      !result?.user || result.user.deletedAt ? "Conta deletada" : result.user.name;
+    const bracket = readFinalBracket(config);
+
+    return {
+      ...season,
+      champions: results.filter((r) => r.position === 1 && r.removedFromWeek === null).map(nameOf),
+      playoffChampions: bracket?.champions.map((id) => nameOf(results.find((r) => r.userId === id))) ?? [],
+    };
+  });
 }
 
 // Server-side permission check used by admin actions

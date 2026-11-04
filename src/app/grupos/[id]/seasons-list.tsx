@@ -42,7 +42,14 @@ export function SeasonsList({
               <span className="text-[13px] text-muted">{FORMAT_LABELS[season.format]}</span>
             </span>
             <span className="flex items-center gap-1.5 text-right text-[13px] font-semibold text-off">
-              {season.champions.length > 0 ? season.champions.join(", ") : "—"}
+              {season.format === "KNOCKOUT" ? (
+                <span className="flex flex-col gap-0.5">
+                  <span>Geral: {season.champions.join(", ") || "—"}</span>
+                  <span>Play-offs: {season.playoffChampions.join(", ") || "—"}</span>
+                </span>
+              ) : (
+                season.champions.join(", ") || "—"
+              )}
               <svg
                 width="16"
                 height="16"

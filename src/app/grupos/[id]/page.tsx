@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Avatar } from "@/components/avatar";
 import { BackHeader } from "@/components/back-header";
+import { PlayoffBracket } from "@/components/playoff-bracket";
 import { todayKey } from "@/lib/dates";
 import { getFinishedSeasons, getGroupForUser } from "@/lib/groups";
 import { prisma } from "@/lib/prisma";
@@ -180,6 +181,21 @@ async function GroupContent({ params }: Pick<PageProps<"/grupos/[id]">, "params"
                     label: "Tabela",
                     content: <RankingTable standings={standings} meId={user.id} groupId={group.id} />,
                   },
+                  ...(standings.bracket
+                    ? [
+                        {
+                          id: "playoffs",
+                          label: "Play-offs",
+                          content: (
+                            <PlayoffBracket
+                              bracket={standings.bracket}
+                              names={Object.fromEntries(standings.rows.map((row) => [row.userId, row.name]))}
+                              meId={user.id}
+                            />
+                          ),
+                        },
+                      ]
+                    : []),
                   {
                     id: "semana",
                     label: "Semana",

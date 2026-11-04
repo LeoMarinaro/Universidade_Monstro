@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { BackHeader } from "@/components/back-header";
+import { PlayoffBracket } from "@/components/playoff-bracket";
 import { addDays, dateToKey, formatDayMonth } from "@/lib/dates";
+import { readFinalBracket } from "@/lib/formats/playoffs";
 import { getGroupForUser } from "@/lib/groups";
 import { prisma } from "@/lib/prisma";
 import { FORMAT_LABELS } from "@/lib/seasons";
@@ -41,6 +43,7 @@ async function FinishedSeasonContent({ params }: Pick<Props, "params">) {
       number: true,
       name: true,
       format: true,
+      config: true,
       startDate: true,
       weeks: true,
       finalizedAt: true,
@@ -64,6 +67,12 @@ async function FinishedSeasonContent({ params }: Pick<Props, "params">) {
 
   const start = dateToKey(season.startDate);
   const end = addDays(start, season.weeks * 7 - 1);
+  const bracket = readFinalBracket(season.config);
+  const names = Object.fromEntries(
+    season.results.flatMap((result) =>
+      result.userId && result.user && !result.user.deletedAt ? [[result.userId, result.user.name]] : [],
+    ),
+  );
 
   return (
     <>
@@ -76,6 +85,10 @@ async function FinishedSeasonContent({ params }: Pick<Props, "params">) {
           {season.weeks} {season.weeks === 1 ? "semana" : "semanas"} · encerrada
         </p>
       </div>
+
+      {bracket && <PlayoffBracket bracket={bracket} names={names} meId={user.id} seasonEnded />}
+
+      {bracket && <h2 className="text-[15px] font-semibold">Classificação geral</h2>}
 
       <ol className="flex flex-col gap-1.5">
         {season.results.map((result) => {

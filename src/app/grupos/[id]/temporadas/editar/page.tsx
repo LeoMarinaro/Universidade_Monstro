@@ -58,6 +58,7 @@ async function EditSeasonContent({ params }: Pick<PageProps<"/grupos/[id]/tempor
         weeks={season.weeks}
         minWeeks={minWeeks}
         hasOffWeeks={latestOff._max.offWeek !== null}
+        durationLocked={season.format === "KNOCKOUT"}
       />
 
       <section className="mt-4 flex flex-col gap-3 rounded-2xl border border-danger/40 p-4">

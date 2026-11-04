@@ -1,6 +1,7 @@
 import type { SeasonFormat } from "@/generated/prisma/client";
 import { addDays, dateToKey, keyToDate, type DayKey } from "@/lib/dates";
 import { FORMAT_MODULES } from "@/lib/formats";
+import { computeBracket, parsePlayoffConfig } from "@/lib/formats/playoffs";
 import { applyOffWeeks } from "@/lib/off-week";
 import { prisma } from "@/lib/prisma";
 import { seasonWeek } from "@/lib/seasons";
@@ -17,7 +18,12 @@ type SeasonForStandings = {
 // Live standings of a running season, recalculated on every request from the
 // group's own workout record (GroupWorkout, not the personal diaries).
 // Finished seasons will read their saved SeasonResult instead.
-export async function getSeasonStandings(season: SeasonForStandings, today: DayKey) {
+// `finalizing`: the season ends now, so even the current week counts as over.
+export async function getSeasonStandings(
+  season: SeasonForStandings,
+  today: DayKey,
+  { finalizing = false }: { finalizing?: boolean } = {},
+) {
   const start = dateToKey(season.startDate);
   const end = addDays(start, season.weeks * 7 - 1);
   const currentWeek = seasonWeek(season.startDate, today);
@@ -99,5 +105,15 @@ export async function getSeasonStandings(season: SeasonForStandings, today: DayK
     return { ...row, position: firstWithSamePoints + 1 };
   });
 
-  return { currentWeek, lastWeek, rows: ranked };
+  const playoffConfig = season.format === "KNOCKOUT" ? parsePlayoffConfig(season.config) : null;
+  const bracket = playoffConfig
+    ? computeBracket(
+        rows.map(({ userId, weekly, removedFromWeek }) => ({ userId, weekly, removedFromWeek })),
+        playoffConfig,
+        finalizing ? season.weeks : Math.min(Math.max(currentWeek - 1, 0), season.weeks),
+        currentWeek,
+      )
+    : null;
+
+  return { currentWeek, lastWeek, rows: ranked, bracket };
 }

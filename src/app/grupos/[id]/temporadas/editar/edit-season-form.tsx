@@ -12,11 +12,22 @@ type Props = {
   weeks: number;
   minWeeks: number;
   hasOffWeeks: boolean;
+  // Play-offs: the duration comes from the phases set at creation
+  durationLocked: boolean;
 };
 
 const initialState: UpdateSeasonState = { error: null };
 
-export function EditSeasonForm({ action, number, name, startDate, weeks, minWeeks, hasOffWeeks }: Props) {
+export function EditSeasonForm({
+  action,
+  number,
+  name,
+  startDate,
+  weeks,
+  minWeeks,
+  hasOffWeeks,
+  durationLocked,
+}: Props) {
   const [state, formAction, pending] = useActionState(action, initialState);
 
   return (
@@ -41,16 +52,23 @@ export function EditSeasonForm({ action, number, name, startDate, weeks, minWeek
         className="h-12 rounded-xl border border-line bg-surface px-3 text-[15px] text-ink [color-scheme:dark] focus:border-accent focus:outline-none"
         required
       />
-      <TextField
-        label="Duração (semanas)"
-        name="weeks"
-        type="number"
-        defaultValue={weeks}
-        min={1}
-        max={104}
-        hint={`Hoje o mínimo é ${minWeeks} ${minWeeks === 1 ? "semana" : "semanas"}: não dá para terminar antes da semana atual ou da semana off de alguém. Mudando o início, o mínimo muda junto.`}
-        required
-      />
+      {durationLocked ? (
+        <p className="text-sm leading-relaxed text-muted">
+          Duração: <strong className="font-semibold text-ink">{weeks} semanas</strong>. Nos play-offs, ela vem das
+          fases definidas na criação. Para mudar as fases, apague a temporada e crie de novo.
+        </p>
+      ) : (
+        <TextField
+          label="Duração (semanas)"
+          name="weeks"
+          type="number"
+          defaultValue={weeks}
+          min={1}
+          max={104}
+          hint={`Hoje o mínimo é ${minWeeks} ${minWeeks === 1 ? "semana" : "semanas"}: não dá para terminar antes da semana atual ou da semana off de alguém. Mudando o início, o mínimo muda junto.`}
+          required
+        />
+      )}
 
       {state.error && (
         <p role="alert" className="text-sm text-danger">

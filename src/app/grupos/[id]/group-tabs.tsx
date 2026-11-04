@@ -13,8 +13,7 @@ export function GroupTabs({ tabs }: { tabs: Tab[] }) {
       <div
         role="tablist"
         aria-label="Seções do grupo"
-        className="grid gap-1 rounded-xl border border-line-soft bg-surface p-1"
-        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+        className="flex gap-1 overflow-x-auto rounded-xl border border-line-soft bg-surface p-1"
       >
         {tabs.map((tab) => (
           <button
@@ -25,7 +24,7 @@ export function GroupTabs({ tabs }: { tabs: Tab[] }) {
             aria-selected={active === tab.id}
             aria-controls={`panel-${tab.id}`}
             onClick={() => setActive(tab.id)}
-            className={`h-10 rounded-[9px] text-[13px] font-semibold ${
+            className={`h-10 flex-1 shrink-0 rounded-[9px] px-2.5 text-[13px] font-semibold whitespace-nowrap ${
               active === tab.id ? "bg-accent text-page" : "text-ink/85 hover:bg-raised"
             }`}
           >
