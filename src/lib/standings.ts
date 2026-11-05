@@ -1,6 +1,7 @@
 import type { SeasonFormat } from "@/generated/prisma/client";
 import { addDays, dateToKey, keyToDate, type DayKey } from "@/lib/dates";
 import { FORMAT_MODULES } from "@/lib/formats";
+import { computePairStandings } from "@/lib/formats/pairs";
 import { computeBracket, parsePlayoffConfig } from "@/lib/formats/playoffs";
 import { applyOffWeeks } from "@/lib/off-week";
 import { prisma } from "@/lib/prisma";
@@ -36,6 +37,7 @@ export async function getSeasonStandings(
       userId: true,
       offWeek: true,
       removedFromWeek: true,
+      teamNumber: true,
       user: { select: { name: true, image: true, deletedAt: true } },
     },
   });
@@ -87,6 +89,7 @@ export async function getSeasonStandings(
     weekly: counted.get(p.userId)!,
     offWeek: p.offWeek,
     removedFromWeek: p.removedFromWeek,
+    teamNumber: p.teamNumber,
     days: days.get(p.userId)!,
   }));
 
@@ -115,5 +118,7 @@ export async function getSeasonStandings(
       )
     : null;
 
-  return { currentWeek, lastWeek, rows: ranked, bracket };
+  const pairs = season.format === "PAIRS" ? computePairStandings(rows) : null;
+
+  return { currentWeek, lastWeek, rows: ranked, bracket, pairs };
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { BackHeader } from "@/components/back-header";
+import { PairsTable, type PairRow } from "@/components/pairs-table";
 import { PlayoffBracket } from "@/components/playoff-bracket";
 import { addDays, dateToKey, formatDayMonth } from "@/lib/dates";
 import { readFinalBracket } from "@/lib/formats/playoffs";
@@ -56,7 +57,9 @@ async function FinishedSeasonContent({ params }: Pick<Props, "params">) {
           workouts: true,
           offWeek: true,
           removedFromWeek: true,
-          user: { select: { name: true, deletedAt: true } },
+          teamNumber: true,
+          teamPosition: true,
+          user: { select: { name: true, image: true, deletedAt: true } },
         },
       },
     },
@@ -74,6 +77,30 @@ async function FinishedSeasonContent({ params }: Pick<Props, "params">) {
     ),
   );
 
+  // Saved results grouped back into pairs (points and positions were frozen when it ended)
+  const teamNumbers = [...new Set(season.results.flatMap((r) => (r.teamNumber === null ? [] : [r.teamNumber])))];
+  const pairs: PairRow[] = teamNumbers
+    .map((teamNumber) => {
+      const members = season.results.filter((r) => r.teamNumber === teamNumber);
+      return {
+        teamNumber,
+        position: members[0].teamPosition ?? 0,
+        points: members.reduce((sum, member) => sum + member.points, 0),
+        out: members.every((member) => member.removedFromWeek !== null),
+        members: members.map((member) => {
+          const active = member.userId && member.user && !member.user.deletedAt;
+          return {
+            userId: active ? member.userId : null,
+            name: active ? member.user!.name : "Conta deletada",
+            image: active ? member.user!.image : null,
+            points: member.points,
+            leftAtWeek: member.removedFromWeek,
+          };
+        }),
+      };
+    })
+    .sort((a, b) => Number(a.out) - Number(b.out) || a.position - b.position || a.teamNumber - b.teamNumber);
+
   return (
     <>
       <BackHeader href={`/grupos/${group.id}`} label={group.name} backLabel="Voltar para o grupo" />
@@ -89,6 +116,13 @@ async function FinishedSeasonContent({ params }: Pick<Props, "params">) {
       {bracket && <PlayoffBracket bracket={bracket} names={names} meId={user.id} seasonEnded />}
 
       {bracket && <h2 className="text-[15px] font-semibold">Classificação geral</h2>}
+
+      {pairs.length > 0 && (
+        <>
+          <PairsTable pairs={pairs} meId={user.id} groupId={group.id} />
+          <h2 className="text-[15px] font-semibold">Classificação individual</h2>
+        </>
+      )}
 
       <ol className="flex flex-col gap-1.5">
         {season.results.map((result) => {

@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@/generated/prisma/client";
 import { addDays, dateToKey, keyToDate, todayKey, type DayKey } from "@/lib/dates";
+import { validatePairs } from "@/lib/formats/pairs";
 import { phaseNames, QUALIFIER_OPTIONS, type PlayoffConfig } from "@/lib/formats/playoffs";
 import { isGroupAdmin } from "@/lib/groups";
 import { purgeDeletedUsers } from "@/lib/membership";
@@ -38,7 +39,8 @@ export async function createSeason(
   const number = Number(formData.get("number"));
   const name = String(formData.get("name") ?? "").trim() || null;
   const start = String(formData.get("startDate") ?? "");
-  const format = formData.get("format") === "KNOCKOUT" ? "KNOCKOUT" : "RAW_POINTS";
+  const chosenFormat = formData.get("format");
+  const format = chosenFormat === "KNOCKOUT" || chosenFormat === "PAIRS" ? chosenFormat : "RAW_POINTS";
   const offWeekEnabled = formData.get("offWeekEnabled") === "on";
   const participantIds = formData.getAll("participants").map(String);
   const offS1Ids = offWeekEnabled ? formData.getAll("offS1").map(String) : [];
@@ -56,6 +58,15 @@ export async function createSeason(
   const memberIds = new Set(members.map((m) => m.userId));
   const participants = participantIds.filter((id) => memberIds.has(id));
   if (participants.length === 0) return { error: "Escolha pelo menos um participante." };
+
+  // Duplas: an even number of participants, each in a pair with one other person
+  let teams: Map<string, number> | null = null;
+  if (format === "PAIRS") {
+    const chosen = new Map(participants.map((id) => [id, Number(formData.get(`pair-${id}`))]));
+    const assignment = validatePairs(participants, chosen);
+    if (!assignment.valid) return { error: assignment.error };
+    teams = assignment.teams;
+  }
 
   // Play-offs: the duration is the qualifying plus every phase, all set by the admin
   let weeks = Number(formData.get("weeks"));
@@ -100,17 +111,18 @@ export async function createSeason(
       weeks,
       offWeekEnabled,
       participants: {
-        create: participants.map((userId) =>
-          offS1Ids.includes(userId)
+        create: participants.map((userId) => ({
+          userId,
+          teamNumber: teams?.get(userId) ?? null,
+          ...(offS1Ids.includes(userId)
             ? {
-                userId,
                 offWeek: 1,
                 offWeekSource: "ADMIN" as const,
                 offWeekActivatedAt: now,
                 offWeekActivatedById: user.id,
               }
-            : { userId },
-        ),
+            : {}),
+        })),
       },
     },
   });
@@ -354,6 +366,8 @@ export async function finalizeSeason(seasonId: string) {
         weeklyWorkouts: row.weekly,
         offWeek: row.offWeek,
         removedFromWeek: row.removedFromWeek,
+        teamNumber: row.teamNumber,
+        teamPosition: standings.pairs?.find((pair) => pair.teamNumber === row.teamNumber)?.position ?? null,
       })),
     });
   });

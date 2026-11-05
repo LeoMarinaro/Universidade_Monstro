@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Avatar } from "@/components/avatar";
 import { BackHeader } from "@/components/back-header";
+import { PairsTable } from "@/components/pairs-table";
 import { PlayoffBracket } from "@/components/playoff-bracket";
 import { todayKey } from "@/lib/dates";
 import { getFinishedSeasons, getGroupForUser } from "@/lib/groups";
@@ -176,9 +177,40 @@ async function GroupContent({ params }: Pick<PageProps<"/grupos/[id]">, "params"
           tabs={[
             ...(season && standings
               ? [
+                  ...(standings.pairs
+                    ? [
+                        {
+                          id: "duplas",
+                          label: "Duplas",
+                          content: (
+                            <PairsTable
+                              pairs={standings.pairs.map((pair) => ({
+                                ...pair,
+                                members: pair.memberIds.flatMap((id) => {
+                                  const row = standings.rows.find((r) => r.userId === id);
+                                  return row
+                                    ? [
+                                        {
+                                          userId: id,
+                                          name: row.name,
+                                          image: row.image,
+                                          points: row.points,
+                                          leftAtWeek: row.removedFromWeek,
+                                        },
+                                      ]
+                                    : [];
+                                }),
+                              }))}
+                              meId={user.id}
+                              groupId={group.id}
+                            />
+                          ),
+                        },
+                      ]
+                    : []),
                   {
                     id: "tabela",
-                    label: "Tabela",
+                    label: standings.pairs ? "Individual" : "Tabela",
                     content: <RankingTable standings={standings} meId={user.id} groupId={group.id} />,
                   },
                   ...(standings.bracket

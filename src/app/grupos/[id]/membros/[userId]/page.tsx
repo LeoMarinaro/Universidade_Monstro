@@ -43,6 +43,7 @@ async function GroupProfileContent({ params }: Pick<Props, "params">) {
     orderBy: { season: { number: "desc" } },
     select: {
       position: true,
+      teamPosition: true,
       points: true,
       removedFromWeek: true,
       season: { select: { number: true, name: true, format: true } },
@@ -60,6 +61,10 @@ async function GroupProfileContent({ params }: Pick<Props, "params">) {
 
   const removed = row ? row.removedFromWeek !== null : false;
   const lastWeek = standings?.lastWeek ?? 0;
+  // In duplas the position that matters is the pair's
+  const pair = standings?.pairs?.find((p) => p.memberIds.includes(userId));
+  const position = pair?.position ?? row?.position;
+  const partners = standings?.rows.filter((r) => pair?.memberIds.includes(r.userId) && r.userId !== userId) ?? [];
 
   return (
     <>
@@ -74,14 +79,17 @@ async function GroupProfileContent({ params }: Pick<Props, "params">) {
           name={person.name}
           image={person.image}
           className={`size-24 border-[3px] font-display text-[38px] font-bold ${
-            row && !removed && row.position === 1 ? "border-off" : "border-accent"
+            row && !removed && position === 1 ? "border-off" : "border-accent"
           }`}
         />
         <h1 className="font-display text-[28px] font-bold">{person.name}</h1>
         {row && !removed && (
           <span className="rounded-full bg-off px-3 py-1 text-[13px] font-semibold text-page">
-            {row.position}º lugar
+            {position}º lugar{pair ? " da dupla" : ""}
           </span>
+        )}
+        {partners.length > 0 && (
+          <span className="text-sm text-muted">Em dupla com {partners.map((p) => p.name).join(" e ")}</span>
         )}
         {removed && <span className="text-sm text-muted">Saiu da temporada na S{row?.removedFromWeek}</span>}
         <Link
@@ -170,10 +178,12 @@ async function GroupProfileContent({ params }: Pick<Props, "params">) {
                   </span>
                   <span
                     className={`font-display text-[17px] font-bold ${
-                      result.removedFromWeek === null && result.position === 1 ? "text-off" : "text-muted"
+                      result.removedFromWeek === null && (result.teamPosition ?? result.position) === 1
+                        ? "text-off"
+                        : "text-muted"
                     }`}
                   >
-                    {result.removedFromWeek === null ? `${result.position}º` : "saiu"}
+                    {result.removedFromWeek === null ? `${result.teamPosition ?? result.position}º` : "saiu"}
                   </span>
                 </Link>
               </li>

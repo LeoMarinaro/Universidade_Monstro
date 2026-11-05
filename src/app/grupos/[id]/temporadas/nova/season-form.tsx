@@ -22,6 +22,12 @@ const FORMATS = [
     description: "Classificação e depois confrontos diretos, com a classificação geral junto",
     available: true,
   },
+  {
+    id: "PAIRS",
+    label: "Duplas",
+    description: "A dupla soma os treinos dos dois, com a classificação individual junto",
+    available: true,
+  },
   { id: "STAGES", label: "Etapas", description: "Blocos de semanas; a colocação dá pontos", available: false },
 ];
 
@@ -42,6 +48,7 @@ export function SeasonForm({ action, nextNumber, defaultStart, members }: Props)
   const [chosenQualifiers, setChosenQualifiers] = useState<number | null>(null);
   const [qualifyingWeeks, setQualifyingWeeks] = useState(DEFAULT_QUALIFYING_WEEKS);
   const [phaseDurations, setPhaseDurations] = useState<Record<string, string>>({});
+  const [pairChoices, setPairChoices] = useState<Record<string, string>>({});
 
   function toggle(set: Set<string>, id: string) {
     const next = new Set(set);
@@ -61,6 +68,21 @@ export function SeasonForm({ action, nextNumber, defaultStart, members }: Props)
   const totalWeeks =
     durationValue(qualifyingWeeks) + phases.reduce((sum, name) => sum + durationValue(phaseValue(name)), 0);
 
+  // Duplas: each participant picks a pair number; a pair is complete with 2 people
+  const pairCount = Math.floor(participantCount / 2);
+  const pairNumbers = Array.from({ length: pairCount }, (_, index) => String(index + 1));
+  const participants = members.filter((member) => !excluded.has(member.id));
+  const pairOf = (id: string) => (pairNumbers.includes(pairChoices[id]) ? pairChoices[id] : "");
+  const pairMembers = (pair: string) => participants.filter((member) => pairOf(member.id) === pair);
+  const pairsProblem =
+    participantCount < 2 || participantCount % 2 !== 0
+      ? `Duplas precisam de um número par de participantes. Agora são ${participantCount}.`
+      : participants.some((member) => !pairOf(member.id))
+        ? "Escolha a dupla de cada participante."
+        : pairNumbers.some((pair) => pairMembers(pair).length !== 2)
+          ? "Cada dupla precisa ter exatamente 2 pessoas."
+          : null;
+
   return (
     <form action={formAction} className="flex flex-col gap-5.5">
       <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3">
@@ -78,7 +100,7 @@ export function SeasonForm({ action, nextNumber, defaultStart, members }: Props)
           className="h-12 rounded-xl border border-line bg-surface px-3 text-[15px] text-ink [color-scheme:dark] focus:border-accent focus:outline-none"
           required
         />
-        {format === "RAW_POINTS" && (
+        {format !== "KNOCKOUT" && (
           <TextField label="Duração (semanas)" name="weeks" type="number" min={1} max={104} placeholder="24" required />
         )}
       </div>
@@ -205,7 +227,7 @@ export function SeasonForm({ action, nextNumber, defaultStart, members }: Props)
             return (
               <li
                 key={member.id}
-                className="flex min-h-14 items-center justify-between gap-2.5 border-b border-raised px-3.5 last:border-b-0"
+                className="flex min-h-14 flex-wrap items-center justify-between gap-x-2.5 border-b border-raised px-3.5 last:border-b-0"
               >
                 <label className="flex min-h-11 grow cursor-pointer items-center gap-3 text-[15px] font-medium">
                   <input
@@ -218,6 +240,28 @@ export function SeasonForm({ action, nextNumber, defaultStart, members }: Props)
                   />
                   <span className={included ? "" : "text-muted"}>{member.name}</span>
                 </label>
+                {included && format === "PAIRS" && (
+                  <>
+                    <label htmlFor={`pair-${member.id}`} className="sr-only">
+                      Dupla de {member.name}
+                    </label>
+                    <select
+                      id={`pair-${member.id}`}
+                      name={`pair-${member.id}`}
+                      value={pairOf(member.id)}
+                      onChange={(event) => setPairChoices({ ...pairChoices, [member.id]: event.target.value })}
+                      required
+                      className="h-9 rounded-lg border border-line bg-page px-2 text-[13px] text-ink [color-scheme:dark]"
+                    >
+                      <option value="">Dupla…</option>
+                      {pairNumbers.map((pair) => (
+                        <option key={pair} value={pair}>
+                          Dupla {pair}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
                 {included && offWeekEnabled && (
                   <label
                     className={`flex h-9 cursor-pointer items-center rounded-full px-3 text-xs font-semibold whitespace-nowrap ${
@@ -243,6 +287,22 @@ export function SeasonForm({ action, nextNumber, defaultStart, members }: Props)
           Desmarque quem não vai participar. &quot;Off na S1&quot; deixa a pessoa de semana off já na
           primeira semana (conta como a semana off dela na temporada).
         </p>
+        {format === "PAIRS" && (
+          <div className="flex flex-col gap-2 rounded-2xl border border-line-soft bg-surface p-4">
+            <span className="text-sm font-medium text-ink/85">Duplas formadas</span>
+            <ul className="flex flex-col gap-1 text-[13px] text-muted">
+              {pairNumbers.map((pair) => (
+                <li key={pair}>
+                  <strong className="font-semibold text-ink/85">Dupla {pair}:</strong>{" "}
+                  {pairMembers(pair)
+                    .map((member) => member.name)
+                    .join(" e ") || "ninguém ainda"}
+                </li>
+              ))}
+            </ul>
+            {pairsProblem && <p className="text-[13px] leading-relaxed text-off">{pairsProblem}</p>}
+          </div>
+        )}
       </fieldset>
 
       {state.error && (
@@ -253,7 +313,7 @@ export function SeasonForm({ action, nextNumber, defaultStart, members }: Props)
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || (format === "PAIRS" && pairsProblem !== null)}
         className="h-14 rounded-2xl bg-accent text-[17px] font-semibold text-page hover:bg-accent-hover disabled:opacity-60"
       >
         {pending ? "Criando…" : "Criar temporada"}

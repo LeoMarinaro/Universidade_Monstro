@@ -18,11 +18,11 @@ enum Role {
 }
 
 // Each format is a scoring module in the code (src/lib/formats/...).
-// Only RAW_POINTS is implemented in phase 1.
 enum SeasonFormat {
   RAW_POINTS // each workout = 1 point
-  KNOCKOUT // weekly head-to-head duels ("mata-mata")
+  KNOCKOUT // play-offs: a qualifying stage, then head-to-head phases
   STAGES // blocks of weeks; the placing in each block gives points ("etapas")
+  PAIRS // duplas: a pair's points are the sum of both members' workouts
 }
 
 // Who registered a workout or activated an off week. Kept apart from the
@@ -187,6 +187,7 @@ model SeasonParticipant {
   // so past weeks never change; shown at the bottom of the table with frozen points.
   // null = still competing
   removedFromWeek      Int?
+  teamNumber           Int? // pair inside the season (PAIRS format); null in other formats
 
   season             Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
   user               User   @relation("Participant", fields: [userId], references: [id], onDelete: Cascade)
@@ -207,6 +208,8 @@ model SeasonResult {
   weeklyWorkouts  Int[] // counted workouts per week (S1 first), off week = the average
   offWeek         Int? // the off week used, if any
   removedFromWeek Int? // set when the person left the season early
+  teamNumber      Int? // PAIRS format: the person's pair
+  teamPosition    Int? // PAIRS format: the pair's final position (1 = champions)
 
   season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
   user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)

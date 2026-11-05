@@ -5,6 +5,7 @@ export const FORMAT_LABELS: Record<SeasonFormat, string> = {
   RAW_POINTS: "Pontos brutos",
   KNOCKOUT: "Play-offs",
   STAGES: "Etapas",
+  PAIRS: "Duplas",
 };
 
 // Week number inside the season (S1 = 1) for a given day.

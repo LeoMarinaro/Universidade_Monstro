@@ -15,4 +15,6 @@ export const FORMAT_MODULES: Partial<Record<SeasonFormat, FormatModule>> = {
   // Play-offs run next to a general classification with the same points;
   // the bracket itself is in ./playoffs.ts
   KNOCKOUT: rawPoints,
+  // Duplas: each person's points are these; the pair's sum is in ./pairs.ts
+  PAIRS: rawPoints,
 };

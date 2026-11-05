@@ -85,7 +85,9 @@ async function ProfileContent({ params }: Pick<Props, "params">) {
       const season = group.seasons[0] ?? null;
       const standings = season ? await getSeasonStandings({ ...season, groupId: group.id }, today) : null;
       const row = standings?.rows.find((r) => r.userId === userId) ?? null;
-      return { group, season, standings, row };
+      // In duplas the position that matters is the pair's
+      const position = standings?.pairs?.find((p) => p.memberIds.includes(userId))?.position ?? row?.position;
+      return { group, season, standings, row, position };
     }),
   );
 
@@ -115,7 +117,7 @@ async function ProfileContent({ params }: Pick<Props, "params">) {
           {!isSelf && <span className="text-xs text-muted">só grupos em comum</span>}
         </div>
 
-        {cards.map(({ group, season, standings, row }) => (
+        {cards.map(({ group, season, standings, row, position }) => (
           <Link
             key={group.id}
             href={`/grupos/${group.id}/membros/${userId}`}
@@ -137,9 +139,9 @@ async function ProfileContent({ params }: Pick<Props, "params">) {
             {season && standings && row && (
               <div className="grid grid-cols-3 gap-2 border-t border-line-soft pt-3">
                 <CardStat
-                  value={row.removedFromWeek === null ? `${row.position}º` : "saiu"}
+                  value={row.removedFromWeek === null ? `${position}º` : "saiu"}
                   label="posição"
-                  highlight={row.removedFromWeek === null && row.position === 1}
+                  highlight={row.removedFromWeek === null && position === 1}
                 />
                 <CardStat value={String(row.points)} label="pontos" />
                 {season.offWeekEnabled ? (
